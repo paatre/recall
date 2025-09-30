@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Personal Activity Aggregator Plan</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Nordic Calm -->
+    <!-- Application Structure Plan: A single-page, vertically scrolling application divided into four distinct phases, plus an introduction and a summary roadmap. This structure guides the user from immediate, simple solutions to complex, long-term ones in a logical progression. Navigation is handled by a sticky header, allowing users to jump between phases. This linear, phased approach is best for presenting a strategic plan, as it breaks down a complex problem into manageable steps and helps with decision-making. -->
+    <!-- Visualization & Content Choices: 1. **Phase Diagram (Doughnut Chart):** Goal: Compare options. Viz: Chart.js Doughnut Chart. Interaction: Hover to see details on complexity vs. benefit for each phase. Justification: Provides a quick, high-level overview to help the user decide how much effort to invest. Library: Chart.js. 2. **Custom Tool Architecture (Diagram):** Goal: Organize/Explain. Viz: HTML/CSS (Tailwind Flexbox/Grid) diagram. Interaction: None, static visual explanation. Justification: A visual flowchart is more intuitive for understanding system architecture than text alone. Method: HTML/CSS. 3. **Phase Progression (Layout):** Goal: Guide user. Viz: Numbered sections with clear headings and icons. Interaction: Sticky nav bar for scrolling. Justification: Structures the information as a clear, actionable plan. Method: HTML/CSS. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #F8F9FA;
+            color: #343A40;
+        }
+        .phase-card {
+            background-color: #FFFFFF;
+            border: 1px solid #E9ECEF;
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .phase-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .sticky-nav a {
+            transition: color 0.2s;
+        }
+        .sticky-nav a:hover {
+            color: #4A90E2;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            margin-left: auto;
+            margin-right: auto;
+            height: auto;
+            max-height: 400px;
+        }
+    </style>
+</head>
+<body class="antialiased">
+    <header id="header" class="sticky top-0 z-50 bg-white/80 backdrop-blur-md shadow-sm">
+        <nav class="sticky-nav container mx-auto px-6 py-3">
+            <div class="flex justify-between items-center">
+                <h1 class="text-xl font-bold text-gray-800">Time Tracking Solution Plan</h1>
+                <div class="hidden md:flex space-x-6 text-sm font-medium text-gray-600">
+                    <a href="#intro" class="hover:text-blue-600">Overview</a>
+                    <a href="#phase1" class="hover:text-blue-600">Phase 1</a>
+                    <a href="#phase2" class="hover:text-blue-600">Phase 2</a>
+                    <a href="#phase3" class="hover:text-blue-600">Phase 3</a>
+                    <a href="#phase4" class="hover:text-blue-600">Phase 4</a>
+                    <a href="#roadmap" class="hover:text-blue-600">Roadmap</a>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container mx-auto px-6 py-12">
+        <section id="intro" class="text-center mb-20">
+            <h2 class="text-4xl font-bold mb-4 text-gray-800">Reclaim Your Time from Time Tracking</h2>
+            <p class="max-w-3xl mx-auto text-lg text-gray-600 mb-12">
+                You're facing a common but frustrating problem: the overhead of reconstructing your workdays to fill out timesheets. This plan provides a strategic, phased approach to solve it, moving from simple process improvements to a fully automated, intelligent system. Each phase builds on the last, allowing you to choose the level of investment that's right for you.
+            </p>
+            <div class="flex flex-col md:flex-row justify-center items-center space-y-8 md:space-y-0 md:space-x-12">
+                <div class="md:w-1/2 text-left p-6">
+                    <h3 class="text-2xl font-semibold mb-4 text-gray-700">Effort vs. Benefit Analysis</h3>
+                    <p class="text-gray-600">This chart provides a high-level comparison of the four phases. As you progress, the initial effort and complexity increase, but the long-term benefits and time savings grow exponentially. The goal is to move from manual data gathering to a system that intelligently prepares your timesheets for you.
+                    </p>
+                </div>
+                <div class="md:w-1/2 flex justify-center">
+                    <div class="chart-container">
+                        <canvas id="effortBenefitChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="space-y-16">
+
+            <section id="phase1" class="scroll-mt-20">
+                <div class="phase-card rounded-xl p-8">
+                    <h3 class="text-sm font-semibold text-blue-600 uppercase mb-2">Phase 1: Quick Wins</h3>
+                    <h2 class="text-3xl font-bold text-gray-800 mb-6">Streamline Your Manual Process</h2>
+                    <p class="text-gray-600 mb-8 max-w-4xl">The lowest-hanging fruit is to make your current data gathering process faster. Instead of building new tools, this phase focuses on using your existing tools more effectively and creating simple scripts to automate the data extraction. This is your foundation for immediate relief.</p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div class="bg-gray-50 p-6 rounded-lg">
+                            <h4 class="font-bold text-lg mb-2">Firefox History</h4>
+                            <p class="text-sm text-gray-600">Use advanced search filters to narrow history by date range. A simple Python script can directly query the `places.sqlite` file for a more structured output of your browsing activity.</p>
+                        </div>
+                        <div class="bg-gray-50 p-6 rounded-lg">
+                            <h4 class="font-bold text-lg mb-2">GitLab Activity</h4>
+                            <p class="text-sm text-gray-600">Utilize the GitLab API. A personal access token and a short script can pull all your contributions (commits, MRs, comments) within a specific date range into a clean text file.</p>
+                        </div>
+                        <div class="bg-gray-50 p-6 rounded-lg">
+                            <h4 class="font-bold text-lg mb-2">Slack Search</h4>
+                             <p class="text-sm text-gray-600">Master Slack's advanced search. Use operators like `from:me` and `during:yyyy-mm-dd` to instantly find your conversations and contributions for any given day.</p>
+                        </div>
+                        <div class="bg-gray-50 p-6 rounded-lg">
+                            <h4 class="font-bold text-lg mb-2">Calendar Events</h4>
+                            <p class="text-sm text-gray-600">The Google Calendar API can easily export your daily schedule. This provides the backbone of your day, outlining meetings and dedicated work blocks.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="phase2" class="scroll-mt-20">
+                <div class="phase-card rounded-xl p-8">
+                    <h3 class="text-sm font-semibold text-teal-600 uppercase mb-2">Phase 2: Automated Tracking</h3>
+                    <h2 class="text-3xl font-bold text-gray-800 mb-6">Evaluate Existing Tools</h2>
+                    <p class="text-gray-600 mb-8 max-w-4xl">Before building from scratch, explore existing applications that automate activity tracking. These tools run in the background, passively logging your digital footprint, which could eliminate most of your manual data gathering. Your concern about ActivityWatch on Wayland is valid, but the situation is improving and it's worth a try.</p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div class="border border-gray-200 rounded-lg p-6">
+                            <h4 class="font-bold text-xl mb-3">ActivityWatch</h4>
+                            <p class="text-gray-600 mb-4">The best open-source, self-hosted option. Tracks active windows, browser tabs, and code editor activity. It's highly extensible.</p>
+                            <p class="font-semibold text-sm">Wayland Status:</p>
+                            <p class="text-sm text-gray-600">Compatibility is actively being developed. Some users report success with recent versions or specific configurations. It's worth installing to test on your system as it may work sufficiently for your needs.</p>
+                        </div>
+                        <div class="border border-gray-200 rounded-lg p-6">
+                            <h4 class="font-bold text-xl mb-3">ManicTime</h4>
+                             <p class="text-gray-600 mb-4">A powerful, cross-platform (including Linux) commercial tool. It offers automatic tracking of apps, documents, and browsing, with features for auto-tagging based on rules.</p>
+                             <p class="font-semibold text-sm">Consideration:</p>
+                             <p class="text-sm text-gray-600">It might be more powerful than you need and has a subscription model, but offers a very polished experience out of the box.</p>
+                        </div>
+                         <div class="border border-gray-200 rounded-lg p-6">
+                            <h4 class="font-bold text-xl mb-3">WakaTime / CodeTime</h4>
+                             <p class="text-gray-600 mb-4">Excellent for developers, these tools live in your IDE and automatically track time spent writing code, right down to the file and language level.</p>
+                             <p class="font-semibold text-sm">Limitation:</p>
+                             <p class="text-sm text-gray-600">Their focus is narrow. They won't capture non-coding work like research, meetings, or Slack discussions, which are key parts of your context.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="phase3" class="scroll-mt-20">
+                <div class="phase-card rounded-xl p-8">
+                    <h3 class="text-sm font-semibold text-indigo-600 uppercase mb-2">Phase 3: Custom Solution</h3>
+                    <h2 class="text-3xl font-bold text-gray-800 mb-6">Build a Personal Aggregator</h2>
+                     <p class="text-gray-600 mb-8 max-w-4xl">If existing tools don't fit, build your own. This gives you complete control. The core idea is a modular system with collectors for each data source, a central database to store events, and a simple web UI to view your daily timeline. This is your single source of truth for "what did I work on?".</p>
+                    <div class="bg-slate-50 border border-slate-200 rounded-lg p-8">
+                        <h4 class="text-xl font-bold text-center mb-6 text-gray-700">System Architecture Blueprint</h4>
+                        <div class="flex flex-col md:flex-row items-center justify-center space-y-4 md:space-y-0 md:space-x-4">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="text-center p-3 bg-white rounded-md shadow-sm">Calendar API</div>
+                                <div class="text-center p-3 bg-white rounded-md shadow-sm">Slack API</div>
+                                <div class="text-center p-3 bg-white rounded-md shadow-sm">GitLab API</div>
+                                <div class="text-center p-3 bg-white rounded-md shadow-sm">Firefox History</div>
+                            </div>
+                            <div class="text-3xl font-thin text-indigo-400 mx-4">&#10230;</div>
+                            <div class="text-center p-6 bg-indigo-100 rounded-lg shadow-inner">
+                                <h5 class="font-bold text-indigo-800">Collectors</h5>
+                                <p class="text-sm text-indigo-700">(Python Scripts)</p>
+                            </div>
+                            <div class="text-3xl font-thin text-indigo-400 mx-4">&#10230;</div>
+                            <div class="text-center p-6 bg-indigo-100 rounded-lg shadow-inner">
+                                <h5 class="font-bold text-indigo-800">SQLite DB</h5>
+                                <p class="text-sm text-indigo-700">(Unified Timeline)</p>
+                            </div>
+                            <div class="text-3xl font-thin text-indigo-400 mx-4">&#10230;</div>
+                            <div class="text-center p-6 bg-white rounded-lg shadow-sm">
+                                <h5 class="font-bold text-gray-800">Web UI</h5>
+                                <p class="text-sm text-gray-600">(Daily View)</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <section id="phase4" class="scroll-mt-20">
+                <div class="phase-card rounded-xl p-8">
+                    <h3 class="text-sm font-semibold text-purple-600 uppercase mb-2">Phase 4: Full Automation</h3>
+                    <h2 class="text-3xl font-bold text-gray-800 mb-6">Integrate AI and Auto-Submission</h2>
+                    <p class="text-gray-600 mb-8 max-w-4xl">This is the ultimate goal. Leverage your custom aggregator from Phase 3, add a layer of intelligence to categorize your activity, and finally, automate the submission to your company's time tracking tool. This phase turns your data into action, virtually eliminating the manual logging process.</p>
+                    <div class="grid md:grid-cols-2 gap-8">
+                        <div class="bg-gray-50 p-6 rounded-lg">
+                             <h4 class="font-bold text-lg mb-2">1. Project & Task Syncing</h4>
+                             <p class="text-sm text-gray-600">Use your tool's GraphQL API to fetch a list of your assigned projects and tasks. This provides the 'ground truth' for what you can book time against.</p>
+                        </div>
+                        <div class="bg-gray-50 p-6 rounded-lg">
+                            <h4 class="font-bold text-lg mb-2">2. AI-Powered Suggestions</h4>
+                            <p class="text-sm text-gray-600">Feed the day's aggregated activity and the task list into an LLM. With a well-crafted prompt, it can group activities, suggest time allocations for each task, and generate summaries.</p>
+                        </div>
+                        <div class="bg-gray-50 p-6 rounded-lg col-span-1 md:col-span-2">
+                             <h4 class="font-bold text-lg mb-2">3. "One-Click" Approval Workflow</h4>
+                             <p class="text-sm text-gray-600 mb-4">Your UI will present the AI's suggestions in a clear format. You simply review, make any minor adjustments, and click "Submit".</p>
+                             <div class="bg-white border rounded-md p-4">
+                                <p class="text-sm font-mono text-gray-500">// AI Suggestion Preview</p>
+                                <div class="mt-2 space-y-2">
+                                    <div class="flex justify-between items-center p-2 bg-purple-50 rounded">
+                                        <div>
+                                            <p class="font-semibold text-purple-800">Project Phoenix: API Refactor</p>
+                                            <p class="text-xs text-purple-600">Based on GitLab MR #123, Firefox history on FastAPI docs.</p>
+                                        </div>
+                                        <p class="font-bold text-lg text-purple-900">3.5h</p>
+                                    </div>
+                                    <div class="flex justify-between items-center p-2 bg-teal-50 rounded">
+                                        <div>
+                                            <p class="font-semibold text-teal-800">Project Chimera: Bug Bash</p>
+                                            <p class="text-xs text-teal-600">Based on Slack #proj-chimera, GitLab issue #456.</p>
+                                        </div>
+                                        <p class="font-bold text-lg text-teal-900">2.0h</p>
+                                    </div>
+                                </div>
+                             </div>
+                        </div>
+                        <div class="bg-gray-50 p-6 rounded-lg col-span-1 md:col-span-2">
+                            <h4 class="font-bold text-lg mb-2">4. Automated Submission</h4>
+                             <p class="text-sm text-gray-600">Upon your approval, the system calls the GraphQL API `mutation` to programmatically log the hours in your company's tool. Your timesheet for the day is done in seconds.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <section id="roadmap" class="scroll-mt-20">
+                 <div class="text-center bg-white border border-gray-200 rounded-xl p-10">
+                    <h2 class="text-3xl font-bold text-gray-800 mb-4">Your Recommended Roadmap</h2>
+                    <p class="max-w-3xl mx-auto text-lg text-gray-600 mb-8">
+                        Here’s a practical path forward. Don't try to boil the ocean. Start small, get immediate value, and build towards the complete solution incrementally.
+                    </p>
+                    <div class="relative w-full max-w-4xl mx-auto py-4">
+                        <div class="absolute left-1/2 top-0 h-full w-0.5 bg-gray-200"></div>
+                        <div class="relative flex justify-between items-center w-full mb-8">
+                            <div class="w-5/12 p-4 bg-gray-50 rounded-lg shadow-sm">
+                                <h4 class="font-bold text-right">Step 1: Implement Phase 1</h4>
+                                <p class="text-sm text-gray-600 text-right">Write small, single-purpose scripts this week to pull data from your sources. This will immediately reduce the pain of manual lookups.</p>
+                            </div>
+                            <div class="absolute left-1/2 -translate-x-1/2 z-10 w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold">1</div>
+                            <div class="w-5/12"></div>
+                        </div>
+                        <div class="relative flex justify-between items-center w-full mb-8">
+                             <div class="w-5/12"></div>
+                             <div class="absolute left-1/2 -translate-x-1/2 z-10 w-8 h-8 rounded-full bg-teal-600 text-white flex items-center justify-center font-bold">2</div>
+                            <div class="w-5/12 p-4 bg-gray-50 rounded-lg shadow-sm">
+                                <h4 class="font-bold">Step 2: Test Phase 2 Tools</h4>
+                                <p class="text-sm text-gray-600">While using your new scripts, install and test ActivityWatch. Give it a week to see if it captures enough data and if the Wayland issues are a showstopper for you. This will inform your decision to build or buy.</p>
+                            </div>
+                        </div>
+                         <div class="relative flex justify-between items-center w-full">
+                            <div class="w-5/12 p-4 bg-gray-50 rounded-lg shadow-sm">
+                                <h4 class="font-bold text-right">Step 3: Decide & Build</h4>
+                                <p class="text-sm text-gray-600 text-right">If ActivityWatch isn't a fit, commit to building the custom tool. Start with the aggregator from Phase 3. Once you have a unified timeline viewer, the path to Phase 4 becomes a series of feature additions.</p>
+                            </div>
+                            <div class="absolute left-1/2 -translate-x-1/2 z-10 w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold">3</div>
+                            <div class="w-5/12"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <footer class="text-center py-8 mt-12 border-t">
+        <p class="text-sm text-gray-500">This interactive plan was generated to help you tackle your time tracking challenges.</p>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const ctx = document.getElementById('effortBenefitChart').getContext('2d');
+            const effortBenefitChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: [
+                        'Phase 1: Streamline', 
+                        'Phase 2: Evaluate Tools', 
+                        'Phase 3: Custom Build', 
+                        'Phase 4: AI Automation'
+                    ],
+                    datasets: [{
+                        label: 'Benefit',
+                        data: [15, 25, 60, 100],
+                        backgroundColor: ['#60A5FA', '#4FD1C5', '#818CF8', '#A78BFA'],
+                        borderColor: '#F8F9FA',
+                        borderWidth: 4,
+                        hoverOffset: 8
+                    }, {
+                        label: 'Complexity/Effort',
+                        data: [10, 20, 70, 90],
+                        backgroundColor: ['#BFDBFE', '#A7F3D0', '#C7D2FE', '#DDD6FE'],
+                        borderColor: '#F8F9FA',
+                        borderWidth: 4,
+                        hoverOffset: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 15,
+                                boxWidth: 12,
+                                font: {
+                                    size: 11
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed !== null) {
+                                        label += context.parsed;
+                                    }
+                                    return ` ${context.label} - ${label}`;
+                                }
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Benefit (Outer) vs. Effort (Inner)',
+                            padding: {
+                                top: 10,
+                                bottom: 10
+                            }
+                        }
+                    },
+                    cutout: '40%'
+                }
+            });
+
+            const header = document.getElementById('header');
+            const navLinks = header.querySelectorAll('a');
+
+            const observerOptions = {
+                root: null,
+                rootMargin: '0px',
+                threshold: 0.5
+            };
+
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const id = entry.target.getAttribute('id');
+                        navLinks.forEach(link => {
+                            link.classList.remove('text-blue-600', 'font-bold');
+                            if (link.getAttribute('href') === `#${id}`) {
+                                link.classList.add('text-blue-600', 'font-bold');
+                            }
+                        });
+                    }
+                });
+            }, observerOptions);
+
+            document.querySelectorAll('section').forEach(section => {
+                observer.observe(section);
+            });
+        });
+    </script>
+</body>
+</html>
+

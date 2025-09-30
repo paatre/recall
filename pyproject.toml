@@ -1,0 +1,16 @@
+[project]
+name = "work-activity-aggregator"
+version = "0.1.0"
+description = "A tool to aggregate activity data from various work-related applications for adding productivity in work hour submission."
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "google-api-python-client>=2.183.0",
+    "google-auth-httplib2>=0.2.0",
+    "google-auth-oauthlib>=1.2.2",
+    "python-dotenv>=1.1.1",
+    "python-gitlab>=6.4.0",
+    "rich>=14.1.0",
+    "slack-sdk>=3.36.0",
+    "yaspin>=3.2.0",
+]
