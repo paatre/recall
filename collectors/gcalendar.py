@@ -1,5 +1,6 @@
 import os.path
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import List
 
 from google.auth.transport.requests import Request
@@ -10,8 +11,10 @@ from googleapiclient.errors import HttpError
 
 from .base import BaseCollector, Event
 
-# If modifying these scopes, delete the file token.json.
 SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
+CONFIG_DIR = Path.home() / ".config" / "work-activity-aggregator"
+TOKEN_PATH = CONFIG_DIR / "token.json"
+CREDS_PATH = CONFIG_DIR / "credentials.json"
 
 
 class GoogleCalendarCollector(BaseCollector):
@@ -23,23 +26,18 @@ class GoogleCalendarCollector(BaseCollector):
     def _get_credentials(self) -> Credentials:
         """Handles the OAuth2 flow to get valid user credentials."""
         creds = None
-        # The file token.json stores the user's access and refresh tokens, and is
-        # created automatically when the authorization flow completes for the first
-        # time.
-        if os.path.exists("token.json"):
-            creds = Credentials.from_authorized_user_file("token.json", SCOPES)
 
-        # If there are no (valid) credentials available, let the user log in.
+        CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+        if os.path.exists("token.json"):
+            creds = Credentials.from_authorized_user_file(TOKEN_PATH, SCOPES)
+
         if not creds or not creds.valid:
             if creds and creds.expired and creds.refresh_token:
                 creds.refresh(Request())
             else:
-                flow = InstalledAppFlow.from_client_secrets_file(
-                    "credentials.json", SCOPES
-                )
+                flow = InstalledAppFlow.from_client_secrets_file(CREDS_PATH, SCOPES)
                 creds = flow.run_local_server(port=0)
 
-            # Save the credentials for the next run
             with open("token.json", "w") as token:
                 token.write(creds.to_json())
         return creds
@@ -70,15 +68,12 @@ class GoogleCalendarCollector(BaseCollector):
 
             events = []
             for event_data in api_events:
-                # For all-day events, 'dateTime' is not present.
-                start_str = event_data["start"].get(
-                    "dateTime", event_data["start"].get("date")
-                )
-                event_ts = datetime.fromisoformat(start_str)
-
-                # Ensure the timestamp is timezone-aware (UTC) for proper comparison
-                if event_ts.tzinfo is None:
-                    event_ts = event_ts.replace(tzinfo=timezone.utc)
+                if 'dateTime' in event_data["start"]:
+                    start_str = event_data["start"]["dateTime"]
+                    event_ts = datetime.fromisoformat(start_str)
+                else:
+                    date_str = event_data["start"]["date"]
+                    event_ts = datetime.fromisoformat(f"{date_str}T12:00:00Z")
 
                 events.append(
                     Event(

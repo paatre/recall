@@ -26,9 +26,8 @@ class ShellCollector(BaseCollector):
                 for line in f:
                     try:
                         timestamp_str, command = line.split(" ", 1)
-                        event_ts = datetime.fromisoformat(timestamp_str).replace(
-                            tzinfo=timezone.utc
-                        )
+                        event_ts = datetime.fromisoformat(timestamp_str)
+                        event_ts = event_ts.astimezone()
                         if start_time <= event_ts <= end_time:
                             events.append(
                                 Event(
