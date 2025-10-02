@@ -10,13 +10,13 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
 
-from collectors.base import BaseCollector, Event
-from collectors.firefox import FirefoxCollector
-from collectors.gcalendar import GoogleCalendarCollector
-from collectors.gitlab import GitLabCollector
-from collectors.shell import ShellCollector
-from collectors.slack import SlackCollector
-from utils.summarizer import summarize_events
+from .collectors.base import BaseCollector, Event
+from .collectors.firefox import FirefoxCollector
+from .collectors.gcalendar import GoogleCalendarCollector
+from .collectors.gitlab import GitLabCollector
+from .collectors.shell import ShellCollector
+from .collectors.slack import SlackCollector
+from .utils.summarizer import summarize_events
 
 ENABLED_COLLECTORS: list[type[BaseCollector]] = [
     FirefoxCollector,

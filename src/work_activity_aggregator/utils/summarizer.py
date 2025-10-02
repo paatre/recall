@@ -1,6 +1,6 @@
 from datetime import timedelta
 from typing import List
-from collectors.base import Event
+from ..collectors.base import Event
 
 
 MAX_GAP_MINUTES = 5
