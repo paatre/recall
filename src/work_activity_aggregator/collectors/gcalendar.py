@@ -28,7 +28,7 @@ class GoogleCalendarCollector(BaseCollector):
         creds = None
 
         CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-        if os.path.exists("token.json"):
+        if os.path.exists(TOKEN_PATH):
             creds = Credentials.from_authorized_user_file(TOKEN_PATH, SCOPES)
 
         if not creds or not creds.valid:
@@ -38,7 +38,7 @@ class GoogleCalendarCollector(BaseCollector):
                 flow = InstalledAppFlow.from_client_secrets_file(CREDS_PATH, SCOPES)
                 creds = flow.run_local_server(port=0)
 
-            with open("token.json", "w") as token:
+            with open(TOKEN_PATH, "w") as token:
                 token.write(creds.to_json())
         return creds
 

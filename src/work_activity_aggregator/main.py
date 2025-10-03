@@ -25,6 +25,7 @@ ENABLED_COLLECTORS: list[type[BaseCollector]] = [
     ShellCollector,
     SlackCollector,
 ]
+GLOBAL_CONFIG_PATH = os.path.expanduser("~/.config/work-activity-aggregator/config.env")
 
 console = Console()
 
@@ -134,7 +135,13 @@ async def main():
     Initializes and runs all enabled collectors for a given date,
     then prints a unified, chronologically sorted timeline of events.
     """
-    load_dotenv()
+    # Load global config file if it exists, meant to read user-specific setting
+    if os.path.exists(GLOBAL_CONFIG_PATH):
+        load_dotenv(GLOBAL_CONFIG_PATH)
+
+    # Load local .env file if it exists, meant to read project-specific setting
+    # during development or testing
+    load_dotenv(override=True)
 
     try:
         target_date = parse_arguments()
