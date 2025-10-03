@@ -12,7 +12,7 @@ from googleapiclient.errors import HttpError
 from .base import BaseCollector, Event
 
 SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
-CONFIG_DIR = Path.home() / ".config" / "work-activity-aggregator"
+CONFIG_DIR = Path.home() / ".config" / "recall"
 TOKEN_PATH = CONFIG_DIR / "token.json"
 CREDS_PATH = CONFIG_DIR / "credentials.json"
 

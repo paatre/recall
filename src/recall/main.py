@@ -25,7 +25,7 @@ ENABLED_COLLECTORS: list[type[BaseCollector]] = [
     ShellCollector,
     SlackCollector,
 ]
-GLOBAL_CONFIG_PATH = os.path.expanduser("~/.config/work-activity-aggregator/config.env")
+GLOBAL_CONFIG_PATH = os.path.expanduser("~/.config/recall/config.env")
 
 console = Console()
 
