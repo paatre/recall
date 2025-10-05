@@ -1,32 +1,28 @@
 import os
-import gitlab
+from datetime import datetime, timedelta, timezone
+from typing import Optional
 
+import gitlab
 from gitlab.exceptions import GitlabAuthenticationError, GitlabError
-from datetime import datetime, timezone, timedelta
-from typing import List, Optional
+from gitlab.v4.objects import Event as GitLabEvent
 
 from .base import BaseCollector, Event
 
 
 class GitLabCollector(BaseCollector):
-    """Collects activity events from the GitLab API."""
+    """Collect activity events from the GitLab API."""
 
     def name(self) -> str:
+        """Return the name of the collector."""
         return "GitLab"
 
-    def _get_event_url(
-        self, event, project_url_cache: dict, gl_client: gitlab.Gitlab
+    def _get_project_base_url(
+        self,
+        project_id: int,
+        project_url_cache: dict,
+        gl_client: gitlab.Gitlab,
     ) -> Optional[str]:
-        """
-        Constructs a direct URL to the event's target (MR, issue, comment, etc.).
-        Uses a cache to avoid redundant API calls for project URLs.
-        """
-        if event.action_name == "commented on":
-            note = event.note
-            if note and "web_url" in note:
-                return note["web_url"]
-
-        project_id = event.project_id
+        """Fetch and cache the base URL of a GitLab project."""
         if not project_id:
             return None
 
@@ -38,7 +34,28 @@ class GitLabCollector(BaseCollector):
                 project_url_cache[project_id] = None
                 return None
 
-        base_url = project_url_cache.get(project_id)
+        return project_url_cache.get(project_id)
+
+    def _get_event_url(
+        self,
+        event: GitLabEvent,
+        project_url_cache: dict,
+        gl_client: gitlab.Gitlab,
+    ) -> Optional[str]:
+        """Construct a direct URL to the event's target (MR, issue, comment, etc.).
+
+        Uses a cache to avoid redundant API calls for project URLs.
+        """
+        if event.action_name == "commented on":
+            note = event.note
+            if note and "web_url" in note:
+                return note["web_url"]
+
+        base_url = self._get_project_base_url(
+            event.project_id,
+            project_url_cache,
+            gl_client,
+        )
         if not base_url:
             return None
 
@@ -55,27 +72,27 @@ class GitLabCollector(BaseCollector):
 
         return base_url
 
-    async def collect(self, start_time: datetime, end_time: datetime) -> List[Event]:
-        """Fetches user events from the GitLab API within the time range."""
-
+    async def collect(self, start_time: datetime, end_time: datetime) -> list[Event]:
+        """Fetch user events from the GitLab API within the time range."""
         gitlab_url = os.environ.get("GITLAB_URL", "https://gitlab.com")
         private_token = os.environ.get("GITLAB_PRIVATE_TOKEN")
         user_id = os.environ.get("GITLAB_USER_ID")
 
         if not private_token or not user_id:
-            raise ValueError(
-                "GITLAB_PRIVATE_TOKEN and GITLAB_USER_ID environment variables must be set."
-            )
+            msg = "GITLAB_PRIVATE_TOKEN and GITLAB_USER_ID must be set."
+            raise ValueError(msg)
 
         gl = gitlab.Gitlab(gitlab_url, private_token=private_token)
 
         try:
             gl.auth()
             user = gl.users.get(user_id)
-        except GitlabAuthenticationError:
-            raise ConnectionError("GitLab authentication failed. Check your token.")
+        except GitlabAuthenticationError as gitlab_auth_err:
+            msg = f"GitLab authentication error: {gitlab_auth_err}"
+            raise ConnectionError(msg) from gitlab_auth_err
         except Exception as e:
-            raise ConnectionError(f"Failed to connect to GitLab: {e}") from e
+            msg = f"Failed to connect to GitLab: {e}"
+            raise ConnectionError(msg) from e
 
         since = start_time - timedelta(seconds=1)
 
@@ -86,7 +103,7 @@ class GitLabCollector(BaseCollector):
 
         for event in api_events:
             event_ts = datetime.fromisoformat(event.created_at).replace(
-                tzinfo=timezone.utc
+                tzinfo=timezone.utc,
             )
 
             if event_ts > end_time:
@@ -97,14 +114,17 @@ class GitLabCollector(BaseCollector):
 
             events.append(
                 Event(
-                    timestamp=event_ts, source=self.name(), description=summary, url=url
-                )
+                    timestamp=event_ts,
+                    source=self.name(),
+                    description=summary,
+                    url=url,
+                ),
             )
 
         return events
 
-    def _format_event_summary(self, event) -> str:
-        """Creates a human-readable summary from a GitLab event object."""
+    def _format_event_summary(self, event: GitLabEvent) -> str:
+        """Create a human-readable summary from a GitLab event object."""
         action = event.action_name
         target = event.target_type or ""
 
@@ -113,11 +133,11 @@ class GitLabCollector(BaseCollector):
             branch = event.push_data.get("ref", "").split("/")[-1]
             return f"Pushed {commit_count} commit(s) to branch '{branch}'"
 
-        elif action == "commented on":
+        if action == "commented on":
             body = event.note.get("body", "")
             return f"Commented on {target.lower()}:\n\n{body}\n"
 
-        elif action == "opened" or action == "closed" or action == "merged":
+        if action in {"opened", "closed", "merged"}:
             return f"{action.capitalize()} {target.lower()}: {event.target_title}"
 
         return f"{action} {target}"

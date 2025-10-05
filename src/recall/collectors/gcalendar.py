@@ -1,7 +1,5 @@
-import os.path
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
-from typing import List
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -17,18 +15,29 @@ TOKEN_PATH = CONFIG_DIR / "token.json"
 CREDS_PATH = CONFIG_DIR / "credentials.json"
 
 
+class GoogleCalendarCredentialsError(FileNotFoundError):
+    """Raised when the credentials.json file is missing or invalid."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            "Could not find a valid credentials.json. "
+            "Please follow setup instructions.",
+        )
+
+
 class GoogleCalendarCollector(BaseCollector):
     """Collects events from the user's primary Google Calendar."""
 
     def name(self) -> str:
+        """Return the name of the collector."""
         return "Calendar"
 
     def _get_credentials(self) -> Credentials:
-        """Handles the OAuth2 flow to get valid user credentials."""
+        """Handle the OAuth2 flow to get valid user credentials."""
         creds = None
 
         CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-        if os.path.exists(TOKEN_PATH):
+        if Path(TOKEN_PATH).exists():
             creds = Credentials.from_authorized_user_file(TOKEN_PATH, SCOPES)
 
         if not creds or not creds.valid:
@@ -38,14 +47,12 @@ class GoogleCalendarCollector(BaseCollector):
                 flow = InstalledAppFlow.from_client_secrets_file(CREDS_PATH, SCOPES)
                 creds = flow.run_local_server(port=0)
 
-            with open(TOKEN_PATH, "w") as token:
+            with Path.open(TOKEN_PATH, "w") as token:
                 token.write(creds.to_json())
         return creds
 
-    async def collect(self, start_time: datetime, end_time: datetime) -> List[Event]:
-        """
-        Connects to the Google Calendar API and fetches events for the specified day.
-        """
+    async def collect(self, start_time: datetime, end_time: datetime) -> list[Event]:
+        """Collect Google Calendar events for a specified day."""
         try:
             creds = self._get_credentials()
             service = build("calendar", "v3", credentials=creds)
@@ -68,7 +75,7 @@ class GoogleCalendarCollector(BaseCollector):
 
             events = []
             for event_data in api_events:
-                if 'dateTime' in event_data["start"]:
+                if "dateTime" in event_data["start"]:
                     start_str = event_data["start"]["dateTime"]
                     event_ts = datetime.fromisoformat(start_str)
                 else:
@@ -81,13 +88,12 @@ class GoogleCalendarCollector(BaseCollector):
                         source=self.name(),
                         description=f"Meeting: {event_data['summary']}",
                         url=event_data.get("htmlLink"),
-                    )
+                    ),
                 )
+        except HttpError as http_error:
+            msg = f"An API error occurred: {http_error}"
+            raise ConnectionError(msg) from http_error
+        except FileNotFoundError as file_error:
+            raise GoogleCalendarCredentialsError from file_error
+        else:
             return events
-
-        except HttpError as error:
-            raise ConnectionError(f"An API error occurred: {error}") from error
-        except FileNotFoundError:
-            raise FileNotFoundError(
-                "Could not find credentials.json. Please follow setup instructions."
-            )
