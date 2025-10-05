@@ -19,5 +19,28 @@ dependencies = [
     "yaspin>=3.2.0",
 ]
 
+[dependency-groups]
+dev = [
+    "ruff>=0.13.3",
+]
+
 [project.scripts]
 recall = "recall.main:_main"
+
+[tool.ruff]
+indent-width = 4
+line-length = 88
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = []
+
+fixable = ["ALL"]
+unfixable = []
+
+[tool.ruff.format]
+indent-style = "space"
+quote-style = "double"
+line-ending = "lf"
+docstring-code-format = true
