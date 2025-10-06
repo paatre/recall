@@ -1,21 +1,19 @@
 from datetime import timedelta
-from typing import List
-from ..collectors.base import Event
 
+from recall.collectors.base import Event
 
 MAX_GAP_MINUTES = 5
 
 
-def summarize_events(events: List[Event]) -> List[Event]:
-    """
-    Summarizes a list of events by grouping consecutive identical events.
+def summarize_events(events: list[Event]) -> list[Event]:
+    """Summarize a list of events by grouping consecutive identical events.
 
     Events are considered identical if they have the same source, description, and URL.
     """
     if not events:
         return []
 
-    summarized_events: List[Event] = []
+    summarized_events: list[Event] = []
 
     current_group_start_event = events[0]
     last_event_timestamp = events[0].timestamp
@@ -56,7 +54,7 @@ def summarize_events(events: List[Event]) -> List[Event]:
             description=current_group_start_event.description,
             duration_minutes=max(1, int(duration.total_seconds() / 60)),
             url=current_group_start_event.url,
-        )
+        ),
     )
 
     return summarized_events

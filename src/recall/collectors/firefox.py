@@ -1,78 +1,98 @@
 import configparser
 import platform
 import sqlite3
-
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
 from .base import BaseCollector, Event
 
 
+class FirefoxDatabaseNotFoundError(FileNotFoundError):
+    """Raised when no valid Firefox places.sqlite database can be found."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            "Could not find a valid Firefox places.sqlite database from profiles.ini.",
+        )
+
+
 class FirefoxCollector(BaseCollector):
-    """Collects browsing history by reading profiles.ini to find the correct database."""
+    """Collects Firefox browsing history.
+
+    Reads profiles.ini from standard locations based on the OS to find
+    the places.sqlite database, then queries it for history entries within
+    the specified time range.
+    """
 
     def name(self) -> str:
+        """Return the name of the collector."""
         return "Firefox"
 
-    def _get_db_path(self) -> Optional[Path]:
-        """Finds the places.sqlite file by parsing profiles.ini."""
-        system = platform.system()
+    def _get_base_paths(self) -> list[Path]:
+        """Return possible base paths for Firefox profiles based on the OS."""
         home = Path.home()
+        system = platform.system()
 
-        possible_base_paths = []
         if system == "Linux":
-            possible_base_paths.append(home / "snap/firefox/common/.mozilla/firefox")
-            possible_base_paths.append(home / ".mozilla/firefox")
-        elif system == "Darwin":
-            possible_base_paths.append(home / "Library/Application Support/Firefox")
-        elif system == "Windows":
-            possible_base_paths.append(home / "AppData/Roaming/Mozilla/Firefox")
-        else:
-            return None
+            return [
+                home / "snap/firefox/common/.mozilla/firefox",
+                home / ".mozilla/firefox",
+            ]
+        if system == "Darwin":
+            return [home / "Library/Application Support/Firefox"]
+        if system == "Windows":
+            return [home / "AppData/Roaming/Mozilla/Firefox"]
+        return []
 
-        for firefox_base_path in possible_base_paths:
-            profiles_ini = firefox_base_path / "profiles.ini"
+    def _parse_profiles(self, profiles_ini: Path) -> list[tuple[int, str, Path]]:
+        """Parse a profiles.ini file and return candidate profiles."""
+        config = configparser.ConfigParser()
+        config.read(profiles_ini)
+
+        results: list[tuple[int, str, Path]] = []
+        firefox_base_path = profiles_ini.parent
+
+        for section in config.sections():
+            if not section.startswith("Profile"):
+                continue
+
+            profile_path_str = config[section].get("Path")
+            profile_name = config[section].get("Name")
+            if not profile_path_str or not profile_name:
+                continue
+
+            is_relative = config[section].getint("IsRelative", 1) == 1
+            profile_path = (
+                firefox_base_path / profile_path_str
+                if is_relative
+                else Path(profile_path_str)
+            )
+            priority = 0 if "nightly" in profile_name.lower() else 1
+            results.append((priority, profile_name, profile_path))
+
+        results.sort()
+        return results
+
+    def _get_db_path(self) -> Optional[Path]:
+        """Find the places.sqlite file by parsing profiles.ini."""
+        for base_path in self._get_base_paths():
+            profiles_ini = base_path / "profiles.ini"
             if not profiles_ini.exists():
                 continue
 
-            config = configparser.ConfigParser()
-            config.read(profiles_ini)
-
-            found_profiles = []
-            for section in config.sections():
-                if section.startswith("Profile"):
-                    profile_path_str = config[section].get("Path")
-                    profile_name = config[section].get("Name")
-                    if not profile_path_str or not profile_name:
-                        continue
-
-                    is_relative = config[section].getint("IsRelative", 1) == 1
-                    profile_path = (
-                        firefox_base_path / profile_path_str
-                        if is_relative
-                        else Path(profile_path_str)
-                    )
-
-                    priority = 0 if "nightly" in profile_name.lower() else 1
-                    found_profiles.append((priority, profile_name, profile_path))
-
-            found_profiles.sort()
-
-            for priority, name, path in found_profiles:
+            for _, _, path in self._parse_profiles(profiles_ini):
                 db_file = path / "places.sqlite"
                 if db_file.exists():
-                    return db_file  # Success! We found it.
+                    return db_file
 
-        return None  # If we loop through all paths and find nothing.
+        return None
 
-    async def collect(self, start_time: datetime, end_time: datetime) -> List[Event]:
-        """Connects to the DB and fetches history within the time range."""
+    async def collect(self, start_time: datetime, end_time: datetime) -> list[Event]:
+        """Connect to the DB and fetches history within the time range."""
         db_path = self._get_db_path()
         if not db_path:
-            raise FileNotFoundError(
-                "Could not find a valid Firefox places.sqlite database from profiles.ini."
-            )
+            raise FirefoxDatabaseNotFoundError
 
         start_micros = int(start_time.timestamp() * 1_000_000)
         end_micros = int(end_time.timestamp() * 1_000_000)
@@ -95,7 +115,8 @@ class FirefoxCollector(BaseCollector):
             for row in cur.execute(query, (start_micros, end_micros)):
                 visit_date_micro, title, url = row
                 ts = datetime.fromtimestamp(
-                    visit_date_micro / 1_000_000, tz=timezone.utc
+                    visit_date_micro / 1_000_000,
+                    tz=timezone.utc,
                 )
                 events.append(
                     Event(
@@ -103,10 +124,11 @@ class FirefoxCollector(BaseCollector):
                         source=self.name(),
                         description=f"{title}",
                         url=url,
-                    )
+                    ),
                 )
             con.close()
         except sqlite3.Error as e:
-            raise ConnectionError(f"Failed to query Firefox history: {e}") from e
+            msg = f"Failed to query Firefox history: {e}"
+            raise ConnectionError(msg) from e
 
         return events

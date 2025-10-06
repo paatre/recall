@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
-from typing import List, Optional
+from typing import Optional
 
 
 @dataclass
@@ -20,10 +20,8 @@ class BaseCollector(ABC):
 
     @abstractmethod
     def name(self) -> str:
-        """Returns the collector's name, e.g., 'Firefox'."""
-        pass
+        """Return the collector's name, e.g., 'Firefox'."""
 
     @abstractmethod
-    async def collect(self, start_time: datetime, end_time: datetime) -> List[Event]:
-        """The main method that gathers and returns event data."""
-        pass
+    async def collect(self, start_time: datetime, end_time: datetime) -> list[Event]:
+        """Gather event data."""
