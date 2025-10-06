@@ -214,4 +214,5 @@ data sources. This project started as a personal tool but hopefully others will
 find it useful too with more data sources.
 
 Please fork the repository and create a pull request with your changes. Make
-sure to follow the existing code style.
+sure to follow the existing code style. For example, use Ruff for linting and
+formatting.
