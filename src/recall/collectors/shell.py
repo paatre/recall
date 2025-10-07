@@ -32,10 +32,10 @@ class ShellCollector(BaseCollector):
 
     async def collect(self, start_time: datetime, end_time: datetime) -> list[Event]:
         """Read the custom log file and parse commands within the time range."""
-        log_file = Path.home() / ".work_activity_history.log"
+        log_file = Path.home() / ".recall_shell_history.log"
         if not log_file.exists():
             console.print(
-                "Shell history log file ~/.work_activity_history.log not found.",
+                "Shell history log file ~/.recall_shell_history.log not found.",
             )
             return []
 

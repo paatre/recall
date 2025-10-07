@@ -175,7 +175,7 @@ ensure this:
 ```bash
 HISTTIMEFORMAT="%Y-%m-%dT%H:%M:%S%z "
 
-export PROMPT_LOG_FILE="$HOME/.work_activity_history.log"
+export PROMPT_LOG_FILE="$HOME/.recall_shell_history.log"
 
 log_prompt_command() {
     local last_command=$(history 1)
