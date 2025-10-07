@@ -25,14 +25,14 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install dependencies (including dev tools like ruff and pytest)
+      - name: Install dependencies
         run: uv sync --dev --locked
 
-      - name: Run Ruff checks (Linting/Formatting)
+      - name: Run Ruff checks
         run: uv run ruff check .
 
-      - name: Run unit tests (Placeholder)
-        run: echo "Unit tests are not implemented yet. Add tests and run 'uv run pytest' here."
+      - name: Run unit tests
+        run: uv run pytest tests/
 
   release_distributions:
     name: Build & upload to GitHub Release
