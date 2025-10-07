@@ -179,8 +179,10 @@ export PROMPT_LOG_FILE="$HOME/.work_activity_history.log"
 
 log_prompt_command() {
     local last_command=$(history 1)
-    if [[ "$last_command" =~ ^[[:space:]]*[0-9]+[[:space:]]+(.*) ]]; then
-        echo "${BASH_REMATCH[1]}" >> "$PROMPT_LOG_FILE"
+    if [[ "$last_command" =~ ^[[:space:]]*[0-9]+[[:space:]]+[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\+?[0-9]{4}[[:space:]]+(.*) ]]; then
+        local command_to_log="${BASH_REMATCH[1]}"
+        local current_time=$(date +"%Y-%m-%dT%H:%M:%S%z")
+        echo "$current_time $command_to_log" >> "$PROMPT_LOG_FILE"
     fi
 }
 
