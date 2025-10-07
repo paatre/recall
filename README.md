@@ -217,4 +217,16 @@ find it useful too with more data sources.
 
 Please fork the repository and create a pull request with your changes. Make
 sure to follow the existing code style. For example, use Ruff for linting and
-formatting.
+formatting. Keeping test coverage high and writing tests for new features is
+also appreciated. You can run the tests using:
+
+```bash
+uv run pytest
+```
+
+You can also use the convenient `pytest-watcher` to automatically run tests on
+file changes:
+
+```bash
+uv run ptw
+```
