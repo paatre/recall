@@ -49,8 +49,10 @@ unfixable = []
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = [
     "ANN201",
+    "PLR0913",
     "PLR2004",
     "S101",
+    "SLF001",
 ]
 
 [tool.ruff.format]
