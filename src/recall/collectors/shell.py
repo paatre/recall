@@ -1,5 +1,6 @@
 from datetime import datetime
 from pathlib import Path
+from typing import Union
 
 from rich.console import Console
 
@@ -18,7 +19,7 @@ class ShellCollector(BaseCollector):
         """Return the name of the collector."""
         return "Shell"
 
-    def _parse_line(self, line: str) -> tuple[datetime, str] | None:
+    def _parse_line(self, line: str) -> Union[tuple[datetime, str], None]:
         """Parse a line from the log file into a timestamp and command."""
         parts = line.strip().split(" ", 1)
         if len(parts) != PARTS_IN_HISTORY_LINE:
