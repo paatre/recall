@@ -59,6 +59,42 @@ def test_get_base_paths_linux(
     assert paths == expected_paths
 
 
+def test_get_base_paths_darwin(
+    collector: FirefoxCollector,
+    mock_platform_system: Callable,
+):
+    """Verify standard base paths are returned for macOS."""
+    mock_platform_system("Darwin")
+    paths = collector._get_base_paths()
+    home = Path.home()
+
+    expected_paths = [home / "Library/Application Support/Firefox"]
+    assert paths == expected_paths
+
+
+def test_get_base_paths_windows(
+    collector: FirefoxCollector,
+    mock_platform_system: Callable,
+):
+    """Verify standard base paths are returned for Windows."""
+    mock_platform_system("Windows")
+    paths = collector._get_base_paths()
+    home = Path.home()
+
+    expected_paths = [home / "AppData/Roaming/Mozilla/Firefox"]
+    assert paths == expected_paths
+
+
+def test_get_base_paths_unsupported_os(
+    collector: FirefoxCollector,
+    mock_platform_system: Callable,
+):
+    """Verify an empty list is returned for an unsupported OS."""
+    mock_platform_system("UnsupportedOS")
+    paths = collector._get_base_paths()
+    assert paths == []
+
+
 @patch("configparser.ConfigParser")
 def test_parse_profiles_relative_and_priority(
     mock_config_parser: MagicMock,
