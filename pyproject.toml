@@ -21,6 +21,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "nox>=2025.5.1",
     "pytest>=8.4.2",
     "pytest-asyncio>=1.2.0",
     "pytest-watcher>=0.4.3",
@@ -49,6 +50,14 @@ unfixable = []
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = [
+    "ANN201",
+    "PLR0913",
+    "PLR2004",
+    "S101",
+    "SLF001",
+]
+
+"noxfile.py" = [
     "ANN201",
     "PLR0913",
     "PLR2004",
