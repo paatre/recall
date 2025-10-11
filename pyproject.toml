@@ -24,6 +24,7 @@ dev = [
     "nox>=2025.5.1",
     "pytest>=8.4.2",
     "pytest-asyncio>=1.2.0",
+    "pytest-cov>=7.0.0",
     "pytest-watcher>=0.4.3",
     "ruff>=0.13.3",
 ]
@@ -31,10 +32,25 @@ dev = [
 [project.scripts]
 recall = "recall.main:_main"
 
+[tool.coverage.report]
+show_missing = true
+
+[tool.coverage.run]
+branch = true
+
+[tool.pytest.ini_options]
+addopts = "--cov=recall --cov-report=term-missing"
+
 [tool.ruff]
 indent-width = 4
 line-length = 88
 target-version = "py39"
+
+[tool.ruff.format]
+indent-style = "space"
+quote-style = "double"
+line-ending = "lf"
+docstring-code-format = true
 
 [tool.ruff.lint]
 select = ["ALL"]
@@ -64,9 +80,3 @@ unfixable = []
     "S101",
     "SLF001",
 ]
-
-[tool.ruff.format]
-indent-style = "space"
-quote-style = "double"
-line-ending = "lf"
-docstring-code-format = true
