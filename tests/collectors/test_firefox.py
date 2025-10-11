@@ -20,22 +20,6 @@ def collector() -> FirefoxCollector:
 
 
 @pytest.fixture
-def mock_profiles() -> dict:
-    """Provide a mock profiles.ini content for Firefox."""
-    return {
-        "Profile0": {"Name": "default", "Path": "a.default", "IsRelative": "1"},
-        "Profile1": {"Name": "Nightly", "Path": "b.nightly", "IsRelative": "1"},
-        "Profile2": {
-            "Name": "absolute",
-            "Path": "/opt/firefox/absolute",
-            "IsRelative": "0",
-        },
-        "NotAProfile": {"Name": "some_other_section"},
-        "Profile3": {"Path": "d.default", "IsRelative": "1"},
-    }
-
-
-@pytest.fixture
 def mock_platform_system(monkeypatch: pytest.MonkeyPatch):
     """Mock platform.system() to return a mock OS."""
 
@@ -100,18 +84,28 @@ def test_get_base_paths_unsupported_os(
 @patch("configparser.ConfigParser")
 def test_parse_profiles_relative_and_priority(
     mock_config_parser: MagicMock,
-    mock_profiles: dict,
     collector: FirefoxCollector,
     mock_temp_home: Path,
 ):
     """Test parsing profiles.ini for relative paths and priority sorting."""
+    mock_profiles = {
+        "Profile0": {"Name": "default", "Path": "a.default", "IsRelative": "1"},
+        "Profile1": {"Name": "Nightly", "Path": "b.nightly", "IsRelative": "1"},
+        "Profile2": {
+            "Name": "absolute",
+            "Path": "/opt/firefox/absolute",
+            "IsRelative": "0",
+        },
+        "NotAProfile": {"Name": "some_other_section"},
+        "Profile3": {"Path": "d.default", "IsRelative": "1"},
+    }
 
     def mock_get_item(section: str) -> MagicMock:
         mock_section = MagicMock()
-        mock_section.get.side_effect = lambda option: mock_profiles.get(
+        mock_section.get.side_effect = lambda option, fallback=None: mock_profiles.get(
             section,
             {},
-        ).get(option)
+        ).get(option, fallback)
         mock_section.getint.side_effect = lambda option, default: int(
             mock_profiles.get(section, {}).get(option, default),
         )
@@ -139,6 +133,43 @@ def test_parse_profiles_relative_and_priority(
     assert results[2][2] == mock_temp_home / "firefox-profiles" / "a.default"
 
 
+@patch("configparser.ConfigParser")
+def test_parse_profiles_skips_invalid_sections(
+    mock_config_parser: MagicMock,
+    collector: FirefoxCollector,
+    mock_temp_home: Path,
+):
+    """Test that _parse_profiles skips non-profile or incomplete sections."""
+    mock_profiles = {
+        "Profile0": {"Name": "default", "Path": "a.default", "IsRelative": "1"},
+        "NotAProfile": {"Name": "some_other_section"},
+        "ProfileWithNoName": {"Path": "b.default", "IsRelative": "1"},
+        "ProfileWithNoPath": {"Name": "another_profile", "IsRelative": "1"},
+    }
+
+    def mock_get_item(section: str) -> MagicMock:
+        mock_section = MagicMock()
+        mock_section.get.side_effect = lambda option, fallback=None: mock_profiles.get(
+            section,
+            {},
+        ).get(option, fallback)
+        mock_section.getint.side_effect = lambda option, default: int(
+            mock_profiles.get(section, {}).get(option, default),
+        )
+        return mock_section
+
+    mock_config_parser.return_value.__getitem__.side_effect = mock_get_item
+    mock_config_parser.return_value.sections.return_value = mock_profiles.keys()
+    mock_config_parser.return_value.read.return_value = None
+
+    mock_ini_path = mock_temp_home / "firefox-profiles" / "profiles.ini"
+
+    results = collector._parse_profiles(mock_ini_path)
+
+    assert len(results) == 1
+    assert results[0][1] == "default"
+
+
 @patch.object(FirefoxCollector, "_get_base_paths", return_value=[Path("/mock/path")])
 @patch("pathlib.Path.exists")
 def test_get_db_path_not_found(
@@ -150,6 +181,27 @@ def test_get_db_path_not_found(
     mock_path_exists.return_value = False
     assert collector._get_db_path() is None
     mock_get_base_paths.assert_called_once()
+
+
+@patch.object(FirefoxCollector, "_get_base_paths")
+@patch.object(FirefoxCollector, "_parse_profiles")
+@patch.object(Path, "exists")
+def test_get_db_path_no_db_file(
+    mock_path_exists: MagicMock,
+    mock_parse_profiles: MagicMock,
+    mock_base_paths: MagicMock,
+    collector: FirefoxCollector,
+):
+    """Test returns None when profiles.ini exists but no places.sqlite is found."""
+    profile_path = Path("/mock/base/profile_dir")
+    mock_path_exists.side_effect = [
+        True,
+        False,
+    ]
+    mock_parse_profiles.return_value = [(1, "default", profile_path)]
+    mock_base_paths.return_value = [Path("/mock/base")]
+
+    assert collector._get_db_path() is None
 
 
 @patch.object(FirefoxCollector, "_get_base_paths")
