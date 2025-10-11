@@ -20,6 +20,11 @@ def mock_slack_user_map() -> dict:
     }
 
 
+def test_name(collector: SlackCollector):
+    """Test that the collector name is correct."""
+    assert collector.name() == "Slack"
+
+
 def test_replace_user_mentions_basic(
     collector: SlackCollector,
     mock_slack_user_map: dict,
