@@ -30,6 +30,8 @@ def mock_profiles() -> dict:
             "Path": "/opt/firefox/absolute",
             "IsRelative": "0",
         },
+        "NotAProfile": {"Name": "some_other_section"},
+        "Profile3": {"Path": "d.default", "IsRelative": "1"},
     }
 
 
