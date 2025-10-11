@@ -23,7 +23,7 @@ class SlackCollector(BaseCollector):
 
         def replace_mention(match: re.Match) -> str:
             user_id = match.group(1)
-            username = user_map.get(user_id, user_id)  # Fallback to ID if not found
+            username = user_map.get(user_id, user_id)
             return f"@{username}"
 
         return re.sub(r"<@(U[A-Z0-9]+)(?:\|.*?)?>", replace_mention, text)

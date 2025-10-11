@@ -175,12 +175,14 @@ ensure this:
 ```bash
 HISTTIMEFORMAT="%Y-%m-%dT%H:%M:%S%z "
 
-export PROMPT_LOG_FILE="$HOME/.recall.log"
+export PROMPT_LOG_FILE="$HOME/.recall_shell_history.log"
 
 log_prompt_command() {
     local last_command=$(history 1)
-    if [[ "$last_command" =~ ^[[:space:]]*[0-9]+[[:space:]]+(.*) ]]; then
-        echo "${BASH_REMATCH[1]}" >> "$PROMPT_LOG_FILE"
+    if [[ "$last_command" =~ ^[[:space:]]*[0-9]+[[:space:]]+[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\+?[0-9]{4}[[:space:]]+(.*) ]]; then
+        local command_to_log="${BASH_REMATCH[1]}"
+        local current_time=$(date +"%Y-%m-%dT%H:%M:%S%z")
+        echo "$current_time $command_to_log" >> "$PROMPT_LOG_FILE"
     fi
 }
 
@@ -215,4 +217,16 @@ find it useful too with more data sources.
 
 Please fork the repository and create a pull request with your changes. Make
 sure to follow the existing code style. For example, use Ruff for linting and
-formatting.
+formatting. Keeping test coverage high and writing tests for new features is
+also appreciated. You can run the tests using:
+
+```bash
+uv run pytest
+```
+
+You can also use the convenient `pytest-watcher` to automatically run tests on
+file changes:
+
+```bash
+uv run ptw
+```

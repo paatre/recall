@@ -1,5 +1,6 @@
 from datetime import datetime
 from pathlib import Path
+from typing import Union
 
 from rich.console import Console
 
@@ -18,7 +19,7 @@ class ShellCollector(BaseCollector):
         """Return the name of the collector."""
         return "Shell"
 
-    def _parse_line(self, line: str) -> tuple[datetime, str] | None:
+    def _parse_line(self, line: str) -> Union[tuple[datetime, str], None]:
         """Parse a line from the log file into a timestamp and command."""
         parts = line.strip().split(" ", 1)
         if len(parts) != PARTS_IN_HISTORY_LINE:
@@ -32,10 +33,10 @@ class ShellCollector(BaseCollector):
 
     async def collect(self, start_time: datetime, end_time: datetime) -> list[Event]:
         """Read the custom log file and parse commands within the time range."""
-        log_file = Path.home() / ".work_activity_history.log"
+        log_file = Path.home() / ".recall_shell_history.log"
         if not log_file.exists():
             console.print(
-                "Shell history log file ~/.work_activity_history.log not found.",
+                "Shell history log file ~/.recall_shell_history.log not found.",
             )
             return []
 
