@@ -104,6 +104,12 @@ def test_group_events_yields_correct_groups():
     assert len(groups[2]) == 1
 
 
+def test_group_events_empty_list():
+    """Test that _group_events correctly handles an empty list."""
+    groups = list(_group_events([]))
+    assert groups == []
+
+
 def test_summarize_events_empty():
     """Test that an empty event list returns an empty list."""
     assert summarize_events([]) == []
