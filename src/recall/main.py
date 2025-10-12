@@ -71,11 +71,11 @@ def print_formatted_event(event: Event, date_str: str, local_tz: tzinfo | None) 
     )
     description_short = event.description or ""
 
-    is_special_case = (
+    has_user_content_and_interactive = (
         "Message in" in description_short or "Commented on" in description_short
     ) and is_interactive()
 
-    if is_special_case:
+    if has_user_content_and_interactive:
         try:
             header, content = description_short.split("\n\n", 1)
             time_str = local_timestamp.strftime("%H:%M:%S")
@@ -87,9 +87,9 @@ def print_formatted_event(event: Event, date_str: str, local_tz: tzinfo | None) 
             panel = Panel(text_to_render, border_style="cyan", expand=False)
             console.print(panel)
         except ValueError:
-            is_special_case = False
+            has_user_content_and_interactive = False
 
-    if not is_special_case:
+    if not has_user_content_and_interactive:
         text_to_print = (
             rf"\[{date_str} {local_timestamp.strftime('%H:%M:%S')}] "
             f"{source} "
