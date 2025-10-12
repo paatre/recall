@@ -74,6 +74,30 @@ async def test_main_config_loading(
     assert mock_load_dotenv.call_count == 2
 
 
+@patch("recall.main.load_dotenv")
+@patch("pathlib.Path.exists")
+@patch("recall.main.collect_events")
+@patch("recall.main.parse_arguments")
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("interactive_false")
+async def test_main_no_global_config(
+    mock_parse_args: MagicMock,
+    mock_collect: MagicMock,
+    mock_path_exists: MagicMock,
+    mock_load_dotenv: MagicMock,
+):
+    """Test that load_dotenv is only called once when no global config exists."""
+    mock_parse_args.return_value = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    mock_collect.return_value = [
+        Event(timestamp=make_dt(0), source="Test", description="Test Event"),
+    ]
+    mock_path_exists.return_value = False
+
+    await main()
+
+    mock_load_dotenv.assert_called_once_with(override=True)
+
+
 @patch("recall.main.argparse.ArgumentParser")
 def test_parse_arguments_no_date(mock_arg_parser: MagicMock):
     """Test that the default date (today) is used when none is provided."""
