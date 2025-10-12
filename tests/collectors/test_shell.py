@@ -1,16 +1,36 @@
+import io
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
 import pytest
+from rich.console import Console
 
 from recall.collectors.shell import ShellCollector
-from tests.utils import make_dt
+from tests.utils import make_dt, strip_ansi
 
 
 @pytest.fixture
 def collector():
     """Fixture for the Shell Collector instance."""
     return ShellCollector()
+
+
+@pytest.fixture
+def capture_rich_text(monkeypatch: pytest.MonkeyPatch) -> io.StringIO:
+    """Fixture to capture the plain text output from rich.console.print().
+
+    Uses monkeypatching the global 'console' object in the shell collector module.
+    Returns a StringIO buffer object containing the captured text.
+    """
+    output_buffer = io.StringIO()
+    capturing_console = Console(
+        file=output_buffer,
+        force_terminal=True,
+        width=80,
+        record=True,
+    )
+    monkeypatch.setattr("recall.collectors.shell.console", capturing_console)
+    return output_buffer
 
 
 def test_name(collector: ShellCollector):
@@ -65,6 +85,30 @@ def test_parse_line_command_with_internal_quotes_and_whitespace(
 
     _, command = result
     assert command == "docker-compose up --build -d"
+
+
+@pytest.mark.asyncio
+@patch("recall.collectors.shell.Path.home")
+async def test_collect_no_log_file(
+    mock_home: MagicMock,
+    collector: ShellCollector,
+    capture_rich_text: io.StringIO,
+):
+    """Empty list is returned and text printed when the log file does not exist."""
+    mock_log_file = mock_home.return_value.__truediv__.return_value
+    mock_log_file.exists.return_value = False
+
+    events = await collector.collect(make_dt(0), make_dt(60))
+
+    mock_home.assert_called_once()
+    mock_home.return_value.__truediv__.assert_called_once_with(
+        ".recall_shell_history.log",
+    )
+    mock_log_file.exists.assert_called_once()
+    output = strip_ansi(capture_rich_text.getvalue()).strip()
+    expected_message = "Shell history log file ~/.recall_shell_history.log not found."
+    assert expected_message == output
+    assert events == []
 
 
 @pytest.mark.asyncio
