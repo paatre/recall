@@ -101,7 +101,7 @@ def test_print_formatted_event_simple(mock_console: MagicMock):
     event = Event(timestamp=make_dt(10), source="Test", description="Simple event")
     print_formatted_event(event, "test_date", timezone.utc)
     mock_console.print.assert_any_call(
-        r"\[test_date 09:10:00] [Test] Simple event  ",
+        r"\[test_date 09:10:00] [Test] Simple event",
     )
 
 
@@ -120,7 +120,7 @@ def test_print_formatted_event_with_url_and_duration(
     )
     print_formatted_event(event, "test_date", timezone.utc)
     mock_console.print.assert_any_call(
-        r"\[test_date 09:15:00] [Test] Event with URL (5 min) ",
+        r"\[test_date 09:15:00] [Test] Event with URL (5 min)",
     )
     mock_console.print.assert_any_call("↳ http://example.com")
 

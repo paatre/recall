@@ -90,12 +90,14 @@ def print_formatted_event(event: Event, date_str: str, local_tz: tzinfo | None) 
             is_special_case = False
 
     if not is_special_case:
-        console.print(
+        text_to_print = (
             rf"\[{date_str} {local_timestamp.strftime('%H:%M:%S')}] "
             f"{source} "
             f"{description_short.strip()} "
-            f"{duration_str} ",
+            f"{duration_str} "
         )
+
+        console.print(text_to_print.strip())
 
     if event.url:
         console.print(f"↳ {event.url}")
