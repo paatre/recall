@@ -21,16 +21,37 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "nox>=2025.5.1",
+    "pytest>=8.4.2",
+    "pytest-asyncio>=1.2.0",
+    "pytest-cov>=7.0.0",
+    "pytest-watcher>=0.4.3",
     "ruff>=0.13.3",
+    "time-machine>=2.19.0",
 ]
 
 [project.scripts]
 recall = "recall.main:_main"
 
+[tool.coverage.report]
+show_missing = true
+
+[tool.coverage.run]
+branch = true
+
+[tool.pytest.ini_options]
+addopts = "--cov=recall --cov-report=term-missing"
+
 [tool.ruff]
 indent-width = 4
 line-length = 88
 target-version = "py39"
+
+[tool.ruff.format]
+indent-style = "space"
+quote-style = "double"
+line-ending = "lf"
+docstring-code-format = true
 
 [tool.ruff.lint]
 select = ["ALL"]
@@ -41,12 +62,24 @@ ignore = [
     "FA100",
     "FA102",
 ]
-
 fixable = ["ALL"]
 unfixable = []
 
-[tool.ruff.format]
-indent-style = "space"
-quote-style = "double"
-line-ending = "lf"
-docstring-code-format = true
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*" = [
+    "ANN201",
+    "PLR0913",
+    "PLR2004",
+    "S101",
+    "S105",
+    "S106",
+    "SLF001",
+]
+
+"noxfile.py" = [
+    "ANN201",
+    "PLR0913",
+    "PLR2004",
+    "S101",
+    "SLF001",
+]

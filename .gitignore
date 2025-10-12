@@ -13,3 +13,6 @@ token.json
 
 # Virtual environments
 .venv
+
+# Coverage
+.coverage
