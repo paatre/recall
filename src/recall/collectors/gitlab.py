@@ -1,4 +1,3 @@
-import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -11,6 +10,13 @@ from .base import BaseCollector, Event
 
 class GitLabCollector(BaseCollector):
     """Collect activity events from the GitLab API."""
+
+    def __init__(self, config: dict) -> None:
+        """Initialize the GitLab collector with its configuration."""
+        super().__init__(config)
+        self.gitlab_url = self.config.get("url", "https://gitlab.com")
+        self.private_token = self.config.get("private_token")
+        self.user_id = self.config.get("user_id")
 
     def name(self) -> str:
         """Return the name of the collector."""
@@ -74,19 +80,15 @@ class GitLabCollector(BaseCollector):
 
     async def collect(self, start_time: datetime, end_time: datetime) -> list[Event]:
         """Fetch user events from the GitLab API within the time range."""
-        gitlab_url = os.environ.get("GITLAB_URL", "https://gitlab.com")
-        private_token = os.environ.get("GITLAB_PRIVATE_TOKEN")
-        user_id = os.environ.get("GITLAB_USER_ID")
-
-        if not private_token or not user_id:
-            msg = "GITLAB_PRIVATE_TOKEN and GITLAB_USER_ID must be set."
+        if not self.private_token or not self.user_id:
+            msg = "GitLab 'private_token' and 'user_id' must be set in config.yaml."
             raise ValueError(msg)
 
-        gl = gitlab.Gitlab(gitlab_url, private_token=private_token)
+        gl = gitlab.Gitlab(self.gitlab_url, private_token=self.private_token)
 
         try:
             gl.auth()
-            user = gl.users.get(user_id)
+            user = gl.users.get(self.user_id)
         except GitlabAuthenticationError as gitlab_auth_err:
             msg = f"GitLab authentication error: {gitlab_auth_err}"
             raise ConnectionError(msg) from gitlab_auth_err

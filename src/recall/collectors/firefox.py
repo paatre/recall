@@ -25,6 +25,10 @@ class FirefoxCollector(BaseCollector):
     the specified time range.
     """
 
+    def __init__(self, config: dict) -> None:
+        """Initialize the Firefox collector with its configuration."""
+        super().__init__(config)
+
     def name(self) -> str:
         """Return the name of the collector."""
         return "Firefox"

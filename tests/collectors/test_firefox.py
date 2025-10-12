@@ -16,7 +16,7 @@ from tests.utils import make_dt
 @pytest.fixture
 def collector() -> FirefoxCollector:
     """Fixture for the Firefox Collector instance."""
-    return FirefoxCollector()
+    return FirefoxCollector(config={})
 
 
 @pytest.fixture

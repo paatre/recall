@@ -15,6 +15,13 @@ console = Console()
 class ShellCollector(BaseCollector):
     """Collects shell commands from a custom, timestamped history file."""
 
+    def __init__(self, config: dict) -> None:
+        """Initialize the Shell collector with its configuration."""
+        super().__init__(config)
+        self.log_file_path = Path(
+            self.config.get("log_file_path", "~/.recall_shell_history.log"),
+        ).expanduser()
+
     def name(self) -> str:
         """Return the name of the collector."""
         return "Shell"
@@ -33,16 +40,13 @@ class ShellCollector(BaseCollector):
 
     async def collect(self, start_time: datetime, end_time: datetime) -> list[Event]:
         """Read the custom log file and parse commands within the time range."""
-        log_file = Path.home() / ".recall_shell_history.log"
-        if not log_file.exists():
-            console.print(
-                "Shell history log file ~/.recall_shell_history.log not found.",
-            )
+        if not self.log_file_path.exists():
+            console.print(f"Shell history log file {self.log_file_path} not found.")
             return []
 
         events = []
         try:
-            with Path.open(log_file, encoding="utf-8") as f:
+            with self.log_file_path.open(encoding="utf-8") as f:
                 for line in f:
                     result = self._parse_line(line)
                     if not result:

@@ -14,18 +14,20 @@ dependencies = [
     "google-auth-oauthlib>=1.2.2",
     "python-dotenv>=1.1.1",
     "python-gitlab>=6.4.0",
+    "PyYAML>=6.0",
     "rich>=14.1.0",
     "slack-sdk>=3.36.0",
     "yaspin>=3.2.0",
 ]
 
-[dependency-groups]
+[project.optional-dependencies]
 dev = [
     "nox>=2025.5.1",
     "pytest>=8.4.2",
     "pytest-asyncio>=1.2.0",
     "pytest-cov>=7.0.0",
     "pytest-watcher>=0.4.3",
+    "pyfakefs>=5.4.0",
     "ruff>=0.13.3",
     "time-machine>=2.19.0",
 ]
@@ -41,6 +43,7 @@ branch = true
 
 [tool.pytest.ini_options]
 addopts = "--cov=recall --cov-report=term-missing"
+pythonpath = ["src"]
 
 [tool.ruff]
 indent-width = 4

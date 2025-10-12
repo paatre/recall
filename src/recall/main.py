@@ -2,9 +2,8 @@ import argparse
 import asyncio
 import sys
 from datetime import datetime, timezone, tzinfo
-from pathlib import Path
+from typing import Any
 
-from dotenv import load_dotenv
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
@@ -17,16 +16,8 @@ from .collectors.gcalendar import GoogleCalendarCollector
 from .collectors.gitlab import GitLabCollector
 from .collectors.shell import ShellCollector
 from .collectors.slack import SlackCollector
+from .config import ConfigError, load_config
 from .utils.summarizer import summarize_events
-
-ENABLED_COLLECTORS: list[type[BaseCollector]] = [
-    FirefoxCollector,
-    GoogleCalendarCollector,
-    GitLabCollector,
-    ShellCollector,
-    SlackCollector,
-]
-GLOBAL_CONFIG_PATH = Path("~/.config/recall/config.env").expanduser()
 
 console = Console()
 
@@ -133,22 +124,42 @@ async def collect_events(
     return all_events
 
 
+def get_collector_map() -> dict[str, type[BaseCollector]]:
+    """Return a mapping from collector type names to collector classes."""
+    return {
+        "firefox": FirefoxCollector,
+        "gcalendar": GoogleCalendarCollector,
+        "gitlab": GitLabCollector,
+        "shell": ShellCollector,
+        "slack": SlackCollector,
+    }
+
+
+def init_collectors_from_config(config: dict[str, Any]) -> list[BaseCollector]:
+    """Initialize collectors based on the provided configuration."""
+    collectors = []
+    collector_map = get_collector_map()
+    for source in config.get("sources", []):
+        if source.get("enabled", False):
+            collector_type = source.get("type")
+            if collector_type in collector_map:
+                collector_class = collector_map[collector_type]
+                collector_config = source.get("config", {})
+                collectors.append(collector_class(collector_config))
+            else:
+                console.print(f"Warning: Unknown collector type '{collector_type}'")
+    return collectors
+
+
 async def main() -> None:
     """Run all enabled collectors for a given date.
 
     Prints a unified, chronologically sorted timeline of events.
     """
-    # Load global config file if it exists, meant to read user-specific setting
-    if Path(GLOBAL_CONFIG_PATH).exists():
-        load_dotenv(GLOBAL_CONFIG_PATH)
-
-    # Load local .env file if it exists, meant to read project-specific setting
-    # during development or testing
-    load_dotenv(override=True)
-
     try:
+        config = load_config()
         target_date = parse_arguments()
-    except ValueError as e:
+    except (ValueError, ConfigError) as e:
         console.print(f"❌ Error: {e}")
         return
 
@@ -171,7 +182,10 @@ async def main() -> None:
         tzinfo=target_date.tzinfo,
     )
 
-    collectors = [cls() for cls in ENABLED_COLLECTORS]
+    collectors = init_collectors_from_config(config)
+    if not collectors:
+        console.print("No collectors enabled in the configuration file.")
+        return
 
     if is_interactive():
         with yaspin(

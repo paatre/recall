@@ -108,68 +108,75 @@ $ recall YYYY-MM-DD
 
 ## Configuration
 
-The tool uses a combination of environment variables and configuration files.
+The tool is configured via a single YAML file located at
+`~/.config/recall/config.yaml`.
 
-### Global configuration file
-
-Create a global configuration file to the `.config` directory in your home
-directory:
+First, create the configuration directory:
 
 ```bash
 mkdir -p ~/.config/recall
-touch ~/.config/recall/config.env
 ```
 
-Add your secrets to this `config.env` file. Read the following section section
-for collector-specific setup instructions.
+Then, create the `config.yaml` file and add your data sources. Here is an
+example configuration that enables all available collectors:
 
-The tool also supports loading environment variables from a `.env` file in the
-current working directory. This is useful for testing and development purposes.
+```yaml
+sources:
+  - id: "firefox_history"
+    type: "firefox"
+    enabled: true
+    config: {}
 
-### Collector-specific configurations
+  - id: "google_calendar_events"
+    type: "gcalendar"
+    enabled: true
+    config:
+      # credentials.json and token.json will be stored here
+      config_dir: "~/.config/recall"
 
-This section describes the setup required for each collector.
+  - id: "gitlab_activity"
+    type: "gitlab"
+    enabled: true
+    config:
+      url: "https://gitlab.com"
+      private_token: "your_gitlab_private_token"
+      user_id: 12345
+
+  - id: "slack_messages"
+    type: "slack"
+    enabled: true
+    config:
+      user_token: "xoxp-your-slack-user-token"
+
+  - id: "shell_commands"
+    type: "shell"
+    enabled: true
+    config:
+      log_file_path: "~/.recall_shell_history.log"
+```
+
+### Collector-specific setup
+
+This section describes any additional setup required for each collector.
 
 #### Google Calendar
 
 - Follow the [Google Calendar API Python Quickstart](https://developers.google.com/calendar/api/quickstart/python)
 to enable the API, configure the OAuth consent screen and download your
 `credentials.json`.
-- Place the `credentials.json` file in `~/.config/recall/`.
+- Place the `credentials.json` file in the directory you specified for `config_dir`
+  in your `config.yaml` (e.g., `~/.config/recall/`).
 - The first time you run the tool, it will open a browser window for you to
-authorize access. This will create a `token.json` and store it in the
-`~/.config/recall/` directory for future runs so that you
-don't need to authorize again.
-
-#### GitLab
-
-Add the following to your `config.env` file:
-
-```
-GITLAB_URL="https://your.gitlab-instance.com"
-GITLAB_PRIVATE_TOKEN="your_personal_access_token"
-GITLAB_USER_ID="your_gitlab_user_id"
-```
-
-#### Slack
-
-> [!note]
-> This collector is not available yet to public use. This is currently being
-> tested internally.
-
-- You need a Slack User Token. You can generate one for your workspace.
-- Add the following to your `config.env` file:
-
-```
-SLACK_USER_TOKEN="xoxp-..."
-```
+authorize access. This will create a `token.json` in the same directory for
+future runs.
 
 #### Shell history
 
-This collector reads from a custom history file located at
-`~/.recall.log` by default. This is required to generate
+This collector reads from a custom history file. This is required to generate
 timestamps even if the commands are executed in different shells (e.g., when
-using `tmux`). It is recommended to add these lines to your `.bashrc` to
+using `tmux`).
+
+It is recommended to add these lines to your `.bashrc` or `.zshrc` to
 ensure this:
 
 ```bash
@@ -205,9 +212,9 @@ Here are the default locations that are supported currently:
 You can easily add new data sources by creating a new collector.
 
 1. Create a new file in the `src/recall/collectors/` directory (e.g., `my_collector.py`).
-2. In this file, create a class that inherits from `BaseCollector` (from `collectors/base.py`).
-3. Implement the `name()` and `collect()` methods. The `collect()` method must be `async` and return a list of `Event` objects.
-4. Add your new collector class to the `ENABLED_COLLECTORS` list in `src/recall/main.py`.
+2. In this file, create a class that inherits from `BaseCollector` (from `collectors/base.py`) and implements the `name()` and `collect()` methods. The `collect()` method must be `async` and return a list of `Event` objects.
+3. Your collector's `__init__` method should accept a `config` dictionary.
+4. Register your new collector in the `get_collector_map` function in `src/recall/main.py`, mapping a `type` name (e.g., `"my_collector"`) to your new collector class. This `type` name is what users will specify in their `config.yaml`.
 
 ## Contributing
 
