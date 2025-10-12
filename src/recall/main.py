@@ -206,8 +206,8 @@ async def main() -> None:
 
 
 def _main() -> None:
-    asyncio.run(main())
+    asyncio.run(main())  # pragma: no cover
 
 
 if __name__ == "__main__":
-    _main()
+    _main()  # pragma: no cover
