@@ -27,6 +27,7 @@ dev = [
     "pytest-cov>=7.0.0",
     "pytest-watcher>=0.4.3",
     "ruff>=0.13.3",
+    "time-machine>=2.19.0",
 ]
 
 [project.scripts]

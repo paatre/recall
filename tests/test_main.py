@@ -3,6 +3,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+import time_machine
 
 from recall.collectors.base import BaseCollector, Event
 from recall.main import (
@@ -195,6 +196,7 @@ def test_print_formatted_event_special_case_slack(mock_console: MagicMock):
 
 @patch("recall.main.console")
 @pytest.mark.usefixtures("interactive_false")
+@time_machine.travel("2025-01-01 09:00:00 +0200")
 def test_print_formatted_event_no_tz_fixed(
     mock_console: MagicMock,
 ):
@@ -203,8 +205,9 @@ def test_print_formatted_event_no_tz_fixed(
 
     print_formatted_event(event, "test_date", None)
 
+    expected_time = "11:10:00"
     mock_console.print.assert_any_call(
-        r"\[test_date 11:10:00] [Test] No TZ test",
+        rf"\[test_date {expected_time}] [Test] No TZ test",
     )
 
 
