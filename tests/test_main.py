@@ -153,6 +153,25 @@ def test_print_formatted_event_no_tz_fixed(
     )
 
 
+@pytest.mark.usefixtures("interactive_true")
+@patch("recall.main.console")
+def test_print_formatted_event_split_failure(mock_console: MagicMock):
+    """Test that improper splitting in user content cases is handled gracefully."""
+    description = "Message in #dev. Malformed message without proper split."
+    event = Event(
+        timestamp=make_dt(25),
+        source="Slack",
+        description=description,
+    )
+
+    print_formatted_event(event, "test_date", timezone.utc)
+
+    mock_console.print.assert_any_call(
+        rf"\[test_date 09:25:00] [Slack] {description}",
+    )
+    mock_console.print.assert_called_with()
+
+
 @pytest.mark.asyncio
 async def test_collect_events_success():
     """Test successful event gathering from multiple collectors."""
