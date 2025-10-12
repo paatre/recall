@@ -201,11 +201,13 @@ def test_print_formatted_event_no_tz_fixed(
     mock_console: MagicMock,
 ):
     """Test printing an event without a local timezone provided."""
+    local_tz = datetime.now().astimezone().tzinfo
     event = Event(timestamp=make_dt(10), source="Test", description="No TZ test")
 
     print_formatted_event(event, "test_date", None)
 
-    expected_time = "11:10:00"
+    local_timestamp = event.timestamp.astimezone(local_tz)
+    expected_time = local_timestamp.strftime("%H:%M:%S")
     mock_console.print.assert_any_call(
         rf"\[test_date {expected_time}] [Test] No TZ test",
     )
