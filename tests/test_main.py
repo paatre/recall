@@ -273,7 +273,7 @@ async def test_collect_events_with_error_and_spinner():
 @pytest.mark.usefixtures("interactive_false", "mock_load_dotenv", "mock_path")
 @patch("recall.main.collect_events")
 @patch("recall.main.parse_arguments")
-async def test_main_happy_path(
+async def test_main_non_interactive_mode(
     mock_parse_args: MagicMock,
     mock_collect: MagicMock,
 ):
@@ -289,6 +289,32 @@ async def test_main_happy_path(
 
     assert mock_collect.call_args[0][0][0].name() == ENABLED_COLLECTORS[0]().name()
     assert mock_collect.called
+
+
+@patch("recall.main.yaspin")
+@patch("recall.main.collect_events")
+@patch("recall.main.parse_arguments")
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("interactive_true", "mock_load_dotenv", "mock_path")
+async def test_main_interactive_mode(
+    mock_parse_args: MagicMock,
+    mock_collect: MagicMock,
+    mock_yaspin: MagicMock,
+):
+    """Tests the interactive path of main with yaspin spinner."""
+    target_date = datetime(2025, 10, 12, tzinfo=timezone.utc)
+    mock_parse_args.return_value = target_date
+    mock_collect.return_value = [Event(make_dt(0), "Test", "Test Event")]
+    mock_spinner = MagicMock()
+    mock_yaspin.return_value.__enter__.return_value = mock_spinner
+
+    await main()
+
+    expected_text = f"🚀 Collecting activity for {target_date.strftime('%Y-%m-%d')}..."
+    mock_yaspin.assert_called_once_with(
+        text=expected_text,
+        color="yellow",
+    )
 
 
 @pytest.mark.asyncio
