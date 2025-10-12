@@ -1,7 +1,7 @@
 import argparse
 import asyncio
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timezone, tzinfo
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -57,9 +57,12 @@ def is_interactive() -> bool:
     return sys.stdout.isatty()
 
 
-def print_formatted_event(event: Event, date_str: str, local_tz: timezone) -> None:
+def print_formatted_event(event: Event, date_str: str, local_tz: tzinfo | None) -> None:
     """Print a formatted event, with special handling for Slack and GitLab."""
-    local_timestamp = event.timestamp.astimezone(local_tz)
+    if local_tz:
+        local_timestamp = event.timestamp.astimezone(local_tz)
+    else:
+        local_timestamp = event.timestamp.astimezone()
     source = f"[{event.source}]"
     duration_str = (
         f"({event.duration_minutes} min)"
@@ -205,4 +208,4 @@ def _main() -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    _main()
