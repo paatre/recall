@@ -121,13 +121,18 @@ def test_parse_arguments_with_date(mock_arg_parser: MagicMock):
         mock_datetime.strptime.assert_called_with("2023-05-20", "%Y-%m-%d")
 
 
-def test_parse_arguments_invalid_date():
-    """Test that an invalid date format raises a ValueError."""
-    with (
-        patch("sys.argv", ["recall", "invalid-date"]),
-        pytest.raises(ValueError, match=r"Invalid date format."),
-    ):
-        parse_arguments()
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("interactive_false", "mock_load_dotenv")
+@patch("recall.main.sys.argv", ["recall", "invalid-date"])
+@patch("recall.main.console")
+async def test_main_handles_parse_error(
+    mock_console: MagicMock,
+):
+    """Test that main handles a ValueError from argument parsing."""
+    await main()
+
+    expected_msg = "❌ Error: Invalid date format. Please use YYYY-MM-DD."
+    mock_console.print.assert_called_with(expected_msg)
 
 
 @patch("sys.stdout.isatty", return_value=True)
@@ -313,20 +318,6 @@ async def test_main_interactive_mode(
         text=expected_text,
         color="yellow",
     )
-
-
-@pytest.mark.asyncio
-@pytest.mark.usefixtures("interactive_false", "mock_load_dotenv")
-@patch("recall.main.console")
-@patch("recall.main.parse_arguments")
-async def test_main_handles_parse_error(
-    mock_parse_args: MagicMock,
-    mock_console: MagicMock,
-):
-    """Test that main handles a ValueError from argument parsing."""
-    mock_parse_args.side_effect = ValueError("Bad Date")
-    await main()
-    mock_console.print.assert_called_with("❌ Error: Bad Date")
 
 
 @pytest.mark.asyncio
