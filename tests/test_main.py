@@ -1,4 +1,5 @@
-from datetime import timezone
+from datetime import datetime, timezone
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -41,6 +42,36 @@ def mock_load_dotenv():
     """Fixture to mock load_dotenv."""
     with patch("recall.main.load_dotenv") as mock:
         yield mock
+
+
+@patch("recall.main.load_dotenv")
+@patch("pathlib.Path.exists")
+@patch("recall.main.collect_events")
+@patch("recall.main.parse_arguments")
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("interactive_false")
+async def test_main_config_loading(
+    mock_parse_args: MagicMock,
+    mock_collect: MagicMock,
+    mock_path_exists: MagicMock,
+    mock_load_dotenv: MagicMock,
+):
+    """Ensuring load_dotenv is called correctly.
+
+    Checks both the global config path and the override call.
+    """
+    mock_parse_args.return_value = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    mock_collect.return_value = [
+        Event(timestamp=make_dt(0), source="Test", description="Test Event"),
+    ]
+    mock_path_exists.return_value = True
+
+    await main()
+
+    global_path = Path("~/.config/recall/config.env").expanduser()
+    mock_load_dotenv.assert_any_call(global_path)
+    mock_load_dotenv.assert_any_call(override=True)
+    assert mock_load_dotenv.call_count == 2
 
 
 @patch("recall.main.argparse.ArgumentParser")
