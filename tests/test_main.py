@@ -32,13 +32,6 @@ def interactive_false():
 
 
 @pytest.fixture
-def mock_path():
-    """Fixture to mock Path."""
-    with patch("recall.main.Path") as mock:
-        yield mock
-
-
-@pytest.fixture
 def mock_load_dotenv():
     """Fixture to mock load_dotenv."""
     with patch("recall.main.load_dotenv") as mock:
@@ -275,7 +268,7 @@ async def test_collect_events_with_error_and_spinner():
 
 
 @pytest.mark.asyncio
-@pytest.mark.usefixtures("interactive_false", "mock_load_dotenv", "mock_path")
+@pytest.mark.usefixtures("interactive_false", "mock_load_dotenv")
 @patch("recall.main.collect_events")
 @patch("recall.main.parse_arguments")
 async def test_main_non_interactive_mode(
@@ -300,7 +293,7 @@ async def test_main_non_interactive_mode(
 @patch("recall.main.collect_events")
 @patch("recall.main.parse_arguments")
 @pytest.mark.asyncio
-@pytest.mark.usefixtures("interactive_true", "mock_load_dotenv", "mock_path")
+@pytest.mark.usefixtures("interactive_true", "mock_load_dotenv")
 async def test_main_interactive_mode(
     mock_parse_args: MagicMock,
     mock_collect: MagicMock,
