@@ -6,15 +6,39 @@ import pytest
 import time_machine
 
 from recall.collectors.base import BaseCollector, Event
+from recall.config import ConfigError, ConfigNotFoundError
 from recall.main import (
-    ENABLED_COLLECTORS,
     collect_events,
+    get_collector_map,
+    init_collectors_from_config,
     is_interactive,
     main,
     parse_arguments,
     print_formatted_event,
 )
 from tests.utils import make_dt
+
+
+@pytest.fixture
+def mock_load_config():
+    """Fixture to mock load_config."""
+    with patch("recall.main.load_config") as mock:
+        yield mock
+
+
+@pytest.fixture
+def mock_collect_events():
+    """Fixture to mock collect_events."""
+    with patch("recall.main.collect_events") as mock:
+        yield mock
+
+
+@pytest.fixture
+def mock_parse_arguments():
+    """Fixture to mock parse_arguments."""
+    with patch("recall.main.parse_arguments") as mock:
+        mock.return_value = make_dt(0)
+        yield mock
 
 
 @pytest.fixture
@@ -29,67 +53,6 @@ def interactive_false():
     """Fixture to mock non-interactive terminal."""
     with patch("sys.stdout.isatty", return_value=False):
         yield
-
-
-@pytest.fixture
-def mock_load_dotenv():
-    """Fixture to mock load_dotenv."""
-    with patch("recall.main.load_dotenv") as mock:
-        yield mock
-
-
-@patch("recall.main.load_dotenv")
-@patch("pathlib.Path.exists")
-@patch("recall.main.collect_events")
-@patch("recall.main.parse_arguments")
-@pytest.mark.asyncio
-@pytest.mark.usefixtures("interactive_false")
-async def test_main_config_loading(
-    mock_parse_args: MagicMock,
-    mock_collect: MagicMock,
-    mock_path_exists: MagicMock,
-    mock_load_dotenv: MagicMock,
-):
-    """Ensuring load_dotenv is called correctly.
-
-    Checks both the global config path and the override call.
-    """
-    mock_parse_args.return_value = datetime(2025, 1, 1, tzinfo=timezone.utc)
-    mock_collect.return_value = [
-        Event(timestamp=make_dt(0), source="Test", description="Test Event"),
-    ]
-    mock_path_exists.return_value = True
-
-    await main()
-
-    global_path = Path("~/.config/recall/config.env").expanduser()
-    mock_load_dotenv.assert_any_call(global_path)
-    mock_load_dotenv.assert_any_call(override=True)
-    assert mock_load_dotenv.call_count == 2
-
-
-@patch("recall.main.load_dotenv")
-@patch("pathlib.Path.exists")
-@patch("recall.main.collect_events")
-@patch("recall.main.parse_arguments")
-@pytest.mark.asyncio
-@pytest.mark.usefixtures("interactive_false")
-async def test_main_no_global_config(
-    mock_parse_args: MagicMock,
-    mock_collect: MagicMock,
-    mock_path_exists: MagicMock,
-    mock_load_dotenv: MagicMock,
-):
-    """Test that load_dotenv is only called once when no global config exists."""
-    mock_parse_args.return_value = datetime(2025, 1, 1, tzinfo=timezone.utc)
-    mock_collect.return_value = [
-        Event(timestamp=make_dt(0), source="Test", description="Test Event"),
-    ]
-    mock_path_exists.return_value = False
-
-    await main()
-
-    mock_load_dotenv.assert_called_once_with(override=True)
 
 
 @patch("recall.main.argparse.ArgumentParser")
@@ -122,17 +85,124 @@ def test_parse_arguments_with_date(mock_arg_parser: MagicMock):
 
 
 @pytest.mark.asyncio
-@pytest.mark.usefixtures("interactive_false", "mock_load_dotenv")
+@pytest.mark.usefixtures("interactive_false")
 @patch("recall.main.sys.argv", ["recall", "invalid-date"])
 @patch("recall.main.console")
 async def test_main_handles_parse_error(
     mock_console: MagicMock,
+    mock_load_config: MagicMock,
 ):
     """Test that main handles a ValueError from argument parsing."""
     await main()
 
     expected_msg = "❌ Error: Invalid date format. Please use YYYY-MM-DD."
     mock_console.print.assert_called_with(expected_msg)
+    mock_load_config.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_main_succeeds_with_valid_config(
+    mock_load_config: MagicMock,
+    mock_collect_events: MagicMock,
+    mock_parse_arguments: MagicMock,
+):
+    """Test the main function's successful execution with a valid config."""
+    mock_load_config.return_value = {
+        "sources": [
+            {"type": "firefox", "enabled": True, "config": {}},
+            {"type": "gitlab", "enabled": False, "config": {}},
+        ],
+    }
+    mock_collect_events.return_value = [Event(make_dt(0), "Test", "Test Event")]
+
+    await main()
+
+    mock_load_config.assert_called_once()
+    mock_parse_arguments.assert_called_once()
+    mock_collect_events.assert_awaited_once()
+
+    collectors_passed = mock_collect_events.call_args[0][0]
+    assert len(collectors_passed) == 1
+    assert collectors_passed[0].name() == "Firefox"
+
+
+@pytest.mark.asyncio
+@patch("recall.main.console")
+async def test_main_config_not_found(
+    mock_console: MagicMock,
+    mock_load_config: MagicMock,
+):
+    """Test that main handles ConfigNotFoundError gracefully."""
+    test_path = Path("/non/existent/config.yaml")
+    mock_load_config.side_effect = ConfigNotFoundError(test_path)
+
+    await main()
+
+    expected_message = (
+        f"❌ Error loading config: Configuration file not found at {test_path}"
+    )
+    mock_console.print.assert_called_with(expected_message)
+
+
+@pytest.mark.asyncio
+@patch("recall.main.console")
+async def test_main_config_error(
+    mock_console: MagicMock,
+    mock_load_config: MagicMock,
+):
+    """Test that main handles a generic ConfigError."""
+    mock_load_config.side_effect = ConfigError("YAML parsing error")
+
+    await main()
+
+    expected_msg = "❌ Error loading config: YAML parsing error"
+    mock_console.print.assert_called_with(expected_msg)
+
+
+@pytest.mark.asyncio
+async def test_main_no_collectors_enabled(
+    mock_load_config: MagicMock,
+    mock_collect_events: MagicMock,
+):
+    """Test main's behavior when the config has no enabled collectors."""
+    mock_load_config.return_value = {
+        "sources": [{"type": "firefox", "enabled": False, "config": {}}],
+    }
+
+    await main()
+
+    mock_collect_events.assert_not_called()
+
+
+def test_init_collectors_from_config():
+    """Test collector initialization from a valid config."""
+    config = {
+        "sources": [
+            {"type": "firefox", "enabled": True, "config": {"path": "/fake"}},
+            {"type": "slack", "enabled": True, "config": {"token": "123"}},
+            {"type": "gitlab", "enabled": False, "config": {}},
+            {"type": "unknown", "enabled": True, "config": {}},
+        ],
+    }
+
+    with patch("recall.main.console") as mock_console:
+        collectors = init_collectors_from_config(config)
+        assert len(collectors) == 2
+        assert collectors[0].name() == "Firefox"
+        assert collectors[0].config == {"path": "/fake"}
+        assert collectors[1].name() == "Slack"
+        assert collectors[1].config == {"token": "123"}
+        mock_console.print.assert_called_with(
+            "Warning: Unknown collector type 'unknown'",
+        )
+
+
+def test_get_collector_map():
+    """Test that the collector map is structured correctly."""
+    collector_map = get_collector_map()
+    assert "firefox" in collector_map
+    assert "slack" in collector_map
+    assert issubclass(collector_map["firefox"], BaseCollector)
 
 
 @patch("sys.stdout.isatty", return_value=True)
@@ -273,47 +343,43 @@ async def test_collect_events_with_error_and_spinner():
 
 
 @pytest.mark.asyncio
-@pytest.mark.usefixtures("interactive_false", "mock_load_dotenv")
-@patch("recall.main.collect_events")
-@patch("recall.main.parse_arguments")
+@pytest.mark.usefixtures("interactive_false")
 async def test_main_non_interactive_mode(
-    mock_parse_args: MagicMock,
-    mock_collect: MagicMock,
+    mock_load_config: MagicMock,
+    mock_collect_events: MagicMock,
 ):
     """Test the main function's successful execution path."""
-    mock_parse_args.return_value = make_dt(0).replace(
-        year=2025,
-        month=10,
-        day=12,
-    )
-    mock_collect.return_value = [Event(make_dt(1), "Test", "Test Event")]
+    mock_load_config.return_value = {
+        "sources": [{"type": "firefox", "enabled": True, "config": {}}],
+    }
+    mock_collect_events.return_value = [Event(make_dt(1), "Test", "Test Event")]
 
     await main()
 
-    assert mock_collect.call_args[0][0][0].name() == ENABLED_COLLECTORS[0]().name()
-    assert mock_collect.called
+    mock_collect_events.assert_awaited_once()
 
 
 @patch("recall.main.yaspin")
-@patch("recall.main.collect_events")
-@patch("recall.main.parse_arguments")
 @pytest.mark.asyncio
-@pytest.mark.usefixtures("interactive_true", "mock_load_dotenv")
+@pytest.mark.usefixtures("interactive_true")
 async def test_main_interactive_mode(
-    mock_parse_args: MagicMock,
-    mock_collect: MagicMock,
     mock_yaspin: MagicMock,
+    mock_collect_events: MagicMock,
+    mock_parse_arguments: MagicMock,
+    mock_load_config: MagicMock,
 ):
     """Tests the interactive path of main with yaspin spinner."""
-    target_date = datetime(2025, 10, 12, tzinfo=timezone.utc)
-    mock_parse_args.return_value = target_date
-    mock_collect.return_value = [Event(make_dt(0), "Test", "Test Event")]
+    mock_load_config.return_value = {
+        "sources": [{"type": "firefox", "enabled": True, "config": {}}],
+    }
+    mock_collect_events.return_value = [Event(make_dt(0), "Test", "Test Event")]
     mock_spinner = MagicMock()
     mock_yaspin.return_value.__enter__.return_value = mock_spinner
 
     await main()
 
-    expected_text = f"🚀 Collecting activity for {target_date.strftime('%Y-%m-%d')}..."
+    expected_date = mock_parse_arguments.return_value.strftime("%Y-%m-%d")
+    expected_text = f"🚀 Collecting activity for {expected_date}..."
     mock_yaspin.assert_called_once_with(
         text=expected_text,
         color="yellow",
@@ -321,17 +387,21 @@ async def test_main_interactive_mode(
 
 
 @pytest.mark.asyncio
-@pytest.mark.usefixtures("interactive_false", "mock_load_dotenv")
+@pytest.mark.usefixtures(
+    "interactive_false",
+    "mock_load_config",
+    "mock_parse_arguments",
+)
 @patch("recall.main.console")
-@patch("recall.main.collect_events")
-@patch("recall.main.parse_arguments")
 async def test_main_no_events_found(
-    mock_parse_args: MagicMock,
-    mock_collect_events: MagicMock,
     mock_console: MagicMock,
+    mock_collect_events: MagicMock,
+    mock_load_config: MagicMock,
 ):
     """Test the main function's behavior when no events are found."""
-    mock_parse_args.return_value = make_dt(0)
+    mock_load_config.return_value = {
+        "sources": [{"type": "firefox", "enabled": True, "config": {}}],
+    }
     mock_collect_events.return_value = []
     await main()
     mock_console.print.assert_any_call("\nNo activity found for the specified date.")

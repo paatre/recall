@@ -10,7 +10,7 @@ from tests.utils import make_dt
 @pytest.fixture
 def collector():
     """Fixture for the Slack Collector instance."""
-    return SlackCollector()
+    return SlackCollector(config={"user_token": "fake-token"})
 
 
 @pytest.fixture
@@ -79,15 +79,12 @@ def test_replace_user_mentions_no_mentions(
 
 
 @pytest.mark.asyncio
-async def test_collect_missing_token(
-    collector: SlackCollector,
-    monkeypatch: pytest.MonkeyPatch,
-):
+async def test_collect_missing_token():
     """Test that a ValueError is raised if the Slack token is not set."""
-    monkeypatch.delenv("SLACK_USER_TOKEN", raising=False)
+    collector = SlackCollector(config={})
     with pytest.raises(
         ValueError,
-        match=r"SLACK_USER_TOKEN environment variable must be set.",
+        match=r"Slack 'user_token' must be set in config.yaml.",
     ):
         await collector.collect(make_dt(0), make_dt(60))
 

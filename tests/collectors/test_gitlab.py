@@ -1,4 +1,3 @@
-import os
 from typing import Callable
 from unittest.mock import MagicMock, patch
 
@@ -12,7 +11,13 @@ from tests.utils import make_dt
 @pytest.fixture
 def collector():
     """Fixture for the GitLab Collector instance."""
-    return GitLabCollector()
+    return GitLabCollector(
+        config={
+            "private_token": "fake_token",
+            "user_id": 123,
+            "gitlab_url": "https://fake-gitlab.com",
+        },
+    )
 
 
 @pytest.fixture
@@ -275,14 +280,13 @@ def test_get_project_base_url_handles_gitlab_error(collector: GitLabCollector):
 
 
 @pytest.mark.asyncio
-async def test_collect_missing_env_vars(collector: GitLabCollector):
+async def test_collect_missing_config_keys():
     """Test that a ValueError is raised if environment variables are missing."""
-    with (
-        patch.dict(os.environ, {}, clear=True),
-        pytest.raises(
-            ValueError,
-            match=r"GITLAB_PRIVATE_TOKEN and GITLAB_USER_ID must be set.",
-        ),
+    collector = GitLabCollector(config={"url": "https://fake-gitlab.com"})
+
+    with pytest.raises(
+        ValueError,
+        match=r"GitLab 'private_token' and 'user_id' must be set in config.yaml.",
     ):
         await collector.collect(make_dt(0), make_dt(60))
 
@@ -292,11 +296,8 @@ async def test_collect_missing_env_vars(collector: GitLabCollector):
 async def test_collect_auth_error(
     mock_gitlab: MagicMock,
     collector: GitLabCollector,
-    monkeypatch: pytest.MonkeyPatch,
 ):
     """Test that a ConnectionError is raised on authentication failure."""
-    monkeypatch.setenv("GITLAB_PRIVATE_TOKEN", "fake_token")
-    monkeypatch.setenv("GITLAB_USER_ID", "123")
     mock_gl_instance = mock_gitlab.return_value
     mock_gl_instance.auth.side_effect = GitlabAuthenticationError
 

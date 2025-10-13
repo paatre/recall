@@ -3,9 +3,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 from google.oauth2.credentials import Credentials
 from googleapiclient.errors import HttpError
+from pyfakefs.fake_filesystem_unittest import FakeFilesystem
 
 from recall.collectors.gcalendar import (
-    TOKEN_PATH,
     GoogleCalendarCollector,
     GoogleCalendarCredentialsError,
 )
@@ -13,9 +13,16 @@ from tests.utils import make_dt
 
 
 @pytest.fixture
-def collector() -> GoogleCalendarCollector:
+def collector(fs: FakeFilesystem) -> GoogleCalendarCollector:
     """Fixture for the GoogleCalendar Collector instance."""
-    return GoogleCalendarCollector()
+    config_dir = "/fake/config"
+    fs.create_dir(config_dir)
+    config = {
+        "config_dir": config_dir,
+        "credentials_filename": "creds.json",
+        "token_filename": "token.json",
+    }
+    return GoogleCalendarCollector(config=config)
 
 
 @pytest.mark.asyncio
@@ -164,16 +171,17 @@ async def test_collect_http_error(
 @patch("recall.collectors.gcalendar.Path.open")
 @patch("recall.collectors.gcalendar.InstalledAppFlow.from_client_secrets_file")
 @patch("recall.collectors.gcalendar.Credentials.from_authorized_user_file")
-@patch("recall.collectors.gcalendar.Path.exists")
 def test_get_credentials_no_token(
-    mock_path_exists: MagicMock,
     mock_creds_from_file: MagicMock,
     mock_flow_from_file: MagicMock,
     mock_path_open: MagicMock,
+    fs: FakeFilesystem,
     collector: GoogleCalendarCollector,
 ):
     """Test the credential loading process when no token file exists."""
-    mock_path_exists.return_value = False
+    fs.create_file(collector.creds_path, contents="{}")
+    assert not collector.token_path.exists()
+
     mock_flow = MagicMock()
     mock_flow.run_local_server.return_value = MockCredentials(
         token="new_token",
@@ -185,20 +193,22 @@ def test_get_credentials_no_token(
 
     assert creds.token == "new_token"
     mock_creds_from_file.assert_not_called()
-    mock_path_open.assert_called_once_with(TOKEN_PATH, "w")
+    mock_path_open.assert_called_once_with(collector.token_path, "w")
 
 
 @patch("recall.collectors.gcalendar.Path.open")
 @patch("recall.collectors.gcalendar.Credentials.from_authorized_user_file")
-@patch("recall.collectors.gcalendar.Path.exists")
 def test_get_credentials_valid_token(
-    mock_path_exists: MagicMock,
     mock_creds_from_file: MagicMock,
     mock_path_open: MagicMock,
+    fs: FakeFilesystem,
     collector: GoogleCalendarCollector,
 ):
     """Test that a valid, existing token is loaded correctly."""
-    mock_path_exists.return_value = True
+    fs.create_file(collector.token_path, contents="{'token': 'old_token'}")
+    fs.create_file(collector.creds_path, contents="{}")
+    assert collector.token_path.exists()
+
     mock_creds = MockCredentials(valid=True)
     mock_creds_from_file.return_value = mock_creds
 
@@ -210,15 +220,19 @@ def test_get_credentials_valid_token(
 
 @patch("recall.collectors.gcalendar.Path.open")
 @patch("recall.collectors.gcalendar.Credentials.from_authorized_user_file")
-@patch("recall.collectors.gcalendar.Path.exists")
+@patch("recall.collectors.gcalendar.InstalledAppFlow.from_client_secrets_file")
 def test_get_credentials_expired_token(
-    mock_path_exists: MagicMock,
+    mock_flow_from_file: MagicMock,
     mock_creds_from_file: MagicMock,
     mock_path_open: MagicMock,
+    fs: FakeFilesystem,
     collector: GoogleCalendarCollector,
 ):
     """Test that an expired token is refreshed."""
-    mock_path_exists.return_value = True
+    fs.create_file(collector.token_path, contents='{"token": "expired_token"}')
+    fs.create_file(collector.creds_path, contents="{}")
+    assert collector.token_path.exists()
+
     mock_creds = MagicMock(
         spec=Credentials,
         valid=False,
@@ -231,5 +245,6 @@ def test_get_credentials_expired_token(
     creds = collector._get_credentials()
 
     mock_creds.refresh.assert_called_once()
-    mock_path_open.assert_called_once_with(TOKEN_PATH, "w")
+    mock_path_open.assert_called_once_with(collector.token_path, "w")
     assert creds == mock_creds
+    mock_flow_from_file.assert_not_called()
