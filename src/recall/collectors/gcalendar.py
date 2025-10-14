@@ -10,9 +10,6 @@ from googleapiclient.errors import HttpError
 from .base import BaseCollector, Event
 
 SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
-CONFIG_DIR = Path.home() / ".config" / "recall"
-TOKEN_PATH = CONFIG_DIR / "token.json"
-CREDS_PATH = CONFIG_DIR / "credentials.json"
 
 
 class GoogleCalendarCredentialsError(FileNotFoundError):
@@ -28,6 +25,18 @@ class GoogleCalendarCredentialsError(FileNotFoundError):
 class GoogleCalendarCollector(BaseCollector):
     """Collects events from the user's primary Google Calendar."""
 
+    def __init__(self, config: dict) -> None:
+        """Initialize the Google Calendar collector with its configuration."""
+        super().__init__(config)
+        config_dir = Path(
+            self.config.get("config_dir", "~/.config/recall"),
+        ).expanduser()
+        self.token_path = config_dir / self.config.get("token_filename", "token.json")
+        self.creds_path = config_dir / self.config.get(
+            "credentials_filename",
+            "credentials.json",
+        )
+
     def name(self) -> str:
         """Return the name of the collector."""
         return "Calendar"
@@ -36,19 +45,22 @@ class GoogleCalendarCollector(BaseCollector):
         """Handle the OAuth2 flow to get valid user credentials."""
         creds = None
 
-        CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-        if Path(TOKEN_PATH).exists():
-            creds = Credentials.from_authorized_user_file(TOKEN_PATH, SCOPES)
+        self.token_path.parent.mkdir(parents=True, exist_ok=True)
+        if self.token_path.exists():
+            creds = Credentials.from_authorized_user_file(self.token_path, SCOPES)
 
         if not creds or not creds.valid:
             if creds and creds.expired and creds.refresh_token:
                 creds.refresh(Request())
             else:
-                flow = InstalledAppFlow.from_client_secrets_file(CREDS_PATH, SCOPES)
+                flow = InstalledAppFlow.from_client_secrets_file(
+                    self.creds_path,
+                    SCOPES,
+                )
                 creds = flow.run_local_server(port=0)
 
-            with Path.open(TOKEN_PATH, "w") as token:
-                token.write(creds.to_json())
+            with Path.open(self.token_path, "w") as token_file:
+                token_file.write(creds.to_json())
         return creds
 
     async def collect(self, start_time: datetime, end_time: datetime) -> list[Event]:

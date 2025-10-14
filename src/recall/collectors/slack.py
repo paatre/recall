@@ -1,4 +1,3 @@
-import os
 import re
 from datetime import datetime, timezone
 
@@ -13,6 +12,11 @@ console = Console()
 
 class SlackCollector(BaseCollector):
     """Collect messages sent by the user from the Slack API using search."""
+
+    def __init__(self, config: dict) -> None:
+        """Initialize the Slack collector with its configuration."""
+        super().__init__(config)
+        self.user_token = self.config.get("user_token")
 
     def name(self) -> str:
         """Return the name of the collector."""
@@ -30,12 +34,11 @@ class SlackCollector(BaseCollector):
 
     async def collect(self, start_time: datetime, end_time: datetime) -> list[Event]:
         """Fetch user messages and replaces user IDs with usernames."""
-        token = os.environ.get("SLACK_USER_TOKEN")
-        if not token:
-            msg = "SLACK_USER_TOKEN environment variable must be set."
+        if not self.user_token:
+            msg = "Slack 'user_token' must be set in config.yaml."
             raise ValueError(msg)
 
-        client = WebClient(token=token)
+        client = WebClient(token=self.user_token)
 
         try:
             client.auth_test()

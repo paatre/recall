@@ -18,6 +18,10 @@ class Event:
 class BaseCollector(ABC):
     """An interface ensuring all collectors have the same methods."""
 
+    def __init__(self, config: dict) -> None:
+        """Initialize the collector with its configuration."""
+        self.config = config
+
     @abstractmethod
     def name(self) -> str:
         """Return the collector's name, e.g., 'Firefox'."""

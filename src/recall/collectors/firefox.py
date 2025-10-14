@@ -25,6 +25,10 @@ class FirefoxCollector(BaseCollector):
     the specified time range.
     """
 
+    def __init__(self, config: dict) -> None:
+        """Initialize the Firefox collector with its configuration."""
+        super().__init__(config)
+
     def name(self) -> str:
         """Return the name of the collector."""
         return "Firefox"
@@ -47,22 +51,22 @@ class FirefoxCollector(BaseCollector):
 
     def _parse_profiles(self, profiles_ini: Path) -> list[tuple[int, str, Path]]:
         """Parse a profiles.ini file and return candidate profiles."""
-        config = configparser.ConfigParser()
-        config.read(profiles_ini)
+        ini_config = configparser.ConfigParser()
+        ini_config.read(profiles_ini)
 
         results: list[tuple[int, str, Path]] = []
         firefox_base_path = profiles_ini.parent
 
-        for section in config.sections():
+        for section in ini_config.sections():
             if not section.startswith("Profile"):
                 continue
 
-            profile_path_str = config[section].get("Path")
-            profile_name = config[section].get("Name")
+            profile_path_str = ini_config[section].get("Path")
+            profile_name = ini_config[section].get("Name")
             if not profile_path_str or not profile_name:
                 continue
 
-            is_relative = config[section].getint("IsRelative", 1) == 1
+            is_relative = ini_config[section].getint("IsRelative", 1) == 1
             profile_path = (
                 firefox_base_path / profile_path_str
                 if is_relative

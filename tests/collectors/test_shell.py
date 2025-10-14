@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
 import pytest
+from pyfakefs.fake_filesystem import FakeFilesystem
 from rich.console import Console
 
 from recall.collectors.shell import ShellCollector
@@ -12,7 +13,7 @@ from tests.utils import make_dt, strip_ansi
 @pytest.fixture
 def collector():
     """Fixture for the Shell Collector instance."""
-    return ShellCollector()
+    return ShellCollector(config={})
 
 
 @pytest.fixture
@@ -88,27 +89,21 @@ def test_parse_line_command_with_internal_quotes_and_whitespace(
 
 
 @pytest.mark.asyncio
-@patch("recall.collectors.shell.Path.home")
 async def test_collect_no_log_file(
-    mock_home: MagicMock,
+    fs: FakeFilesystem,
     collector: ShellCollector,
     capture_rich_text: io.StringIO,
 ):
     """Empty list is returned and text printed when the log file does not exist."""
-    mock_log_file = mock_home.return_value.__truediv__.return_value
-    mock_log_file.exists.return_value = False
+    expected_path = collector.log_file_path
 
     events = await collector.collect(make_dt(0), make_dt(60))
 
-    mock_home.assert_called_once()
-    mock_home.return_value.__truediv__.assert_called_once_with(
-        ".recall_shell_history.log",
-    )
-    mock_log_file.exists.assert_called_once()
     output = strip_ansi(capture_rich_text.getvalue()).strip()
-    expected_message = "Shell history log file ~/.recall_shell_history.log not found."
+    expected_message = f"Shell history log file {expected_path} not found."
     assert expected_message == output
     assert events == []
+    assert fs.exists(expected_path) is False
 
 
 @pytest.mark.asyncio
@@ -127,20 +122,17 @@ async def test_collect_os_error(
 
 
 @pytest.mark.asyncio
-@patch("recall.collectors.shell.Path.open")
-@patch("recall.collectors.shell.Path.home")
 async def test_collect_skips_invalid_lines(
-    mock_home: MagicMock,
-    mock_open: MagicMock,
+    fs: FakeFilesystem,
     collector: ShellCollector,
 ):
     """Test that invalid lines in the log file are skipped."""
-    mock_home.return_value.joinpath.return_value.exists.return_value = True
+    log_path = collector.log_file_path
     log_content = [
         "this is not a valid line",
         "2025-01-01T09:00:00Z valid_command",
     ]
-    mock_open.return_value.__enter__.return_value = log_content
+    fs.create_file(log_path, contents="\n".join(log_content))
 
     start_time, end_time = make_dt(0), make_dt(60)
     events = await collector.collect(start_time, end_time)
@@ -150,22 +142,19 @@ async def test_collect_skips_invalid_lines(
 
 
 @pytest.mark.asyncio
-@patch("recall.collectors.shell.Path.open")
-@patch("recall.collectors.shell.Path.home")
 async def test_collect_filters_by_time(
-    mock_home: MagicMock,
-    mock_open: MagicMock,
+    fs: FakeFilesystem,
     collector: ShellCollector,
 ):
     """Test that events are correctly filtered by the given time range."""
-    mock_home.return_value.joinpath.return_value.exists.return_value = True
+    log_path = collector.log_file_path
     log_content = [
         "2025-01-01T08:59:59Z command_before",
         "2025-01-01T09:00:00Z command_within",
         "2025-01-01T09:00:01Z another_within",
         "2025-01-01T10:00:01Z command_after",
     ]
-    mock_open.return_value.__enter__.return_value = log_content
+    fs.create_file(log_path, contents="\n".join(log_content))
 
     start_time, end_time = make_dt(0), make_dt(60)
     events = await collector.collect(start_time, end_time)
