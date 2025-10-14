@@ -17,8 +17,11 @@ class ConfigNotFoundError(ConfigError, FileNotFoundError):
         super().__init__(f"Configuration file not found at {path}")
 
 
-def load_config(config_path: Path = DEFAULT_CONFIG_PATH) -> dict[str, Any]:
+def load_config(config_path: Path | None = None) -> dict[str, Any]:
     """Load and parse the YAML configuration file."""
+    if not config_path:
+        config_path = DEFAULT_CONFIG_PATH
+
     if not config_path.exists():
         raise ConfigNotFoundError(config_path)
 

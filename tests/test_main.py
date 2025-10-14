@@ -30,7 +30,7 @@ def mock_valid_cli_args():
 def mock_parse_arguments():
     """Fixture to mock parse_arguments."""
     with patch("recall.main.parse_arguments") as mock:
-        mock.return_value = make_dt(0)
+        mock.return_value = make_dt(0), None
         yield mock
 
 
@@ -74,6 +74,7 @@ def test_parse_arguments_no_date(mock_arg_parser: MagicMock):
     """Test that the default date (today) is used when none is provided."""
     mock_args = MagicMock()
     mock_args.date = "2025-10-12"
+    mock_args.config = None
     mock_arg_parser.return_value.parse_args.return_value = mock_args
 
     with patch("recall.main.datetime") as mock_datetime:
@@ -81,7 +82,7 @@ def test_parse_arguments_no_date(mock_arg_parser: MagicMock):
         mock_datetime.strptime.return_value.replace.return_value = "fake_datetime"
 
         result = parse_arguments()
-        assert result == "fake_datetime"
+        assert result == ("fake_datetime", None)
         mock_datetime.strptime.assert_called_with("2025-10-12", "%Y-%m-%d")
 
 
@@ -401,7 +402,8 @@ async def test_main_interactive_mode(
 
     await main()
 
-    expected_date = mock_parse_arguments.return_value.strftime("%Y-%m-%d")
+    target_date, _ = mock_parse_arguments.return_value
+    expected_date = target_date.strftime("%Y-%m-%d")
     expected_text = f"🚀 Collecting activity for {expected_date}..."
     mock_yaspin.assert_called_once_with(
         text=expected_text,
