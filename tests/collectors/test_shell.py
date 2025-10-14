@@ -122,20 +122,17 @@ async def test_collect_os_error(
 
 
 @pytest.mark.asyncio
-@patch("recall.collectors.shell.Path.open")
-@patch("recall.collectors.shell.Path.home")
 async def test_collect_skips_invalid_lines(
-    mock_home: MagicMock,
-    mock_open: MagicMock,
+    fs: FakeFilesystem,
     collector: ShellCollector,
 ):
     """Test that invalid lines in the log file are skipped."""
-    mock_home.return_value.joinpath.return_value.exists.return_value = True
+    log_path = collector.log_file_path
     log_content = [
         "this is not a valid line",
         "2025-01-01T09:00:00Z valid_command",
     ]
-    mock_open.return_value.__enter__.return_value = log_content
+    fs.create_file(log_path, contents="\n".join(log_content))
 
     start_time, end_time = make_dt(0), make_dt(60)
     events = await collector.collect(start_time, end_time)
@@ -145,22 +142,19 @@ async def test_collect_skips_invalid_lines(
 
 
 @pytest.mark.asyncio
-@patch("recall.collectors.shell.Path.open")
-@patch("recall.collectors.shell.Path.home")
 async def test_collect_filters_by_time(
-    mock_home: MagicMock,
-    mock_open: MagicMock,
+    fs: FakeFilesystem,
     collector: ShellCollector,
 ):
     """Test that events are correctly filtered by the given time range."""
-    mock_home.return_value.joinpath.return_value.exists.return_value = True
+    log_path = collector.log_file_path
     log_content = [
         "2025-01-01T08:59:59Z command_before",
         "2025-01-01T09:00:00Z command_within",
         "2025-01-01T09:00:01Z another_within",
         "2025-01-01T10:00:01Z command_after",
     ]
-    mock_open.return_value.__enter__.return_value = log_content
+    fs.create_file(log_path, contents="\n".join(log_content))
 
     start_time, end_time = make_dt(0), make_dt(60)
     events = await collector.collect(start_time, end_time)
