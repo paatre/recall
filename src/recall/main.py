@@ -169,7 +169,7 @@ async def main() -> None:
         return
 
     collectors = init_collectors_from_config(config)
-    if not collectors:
+    if len(collectors) == 0:
         console.print("No collectors are enabled in the configuration.")
         return
 

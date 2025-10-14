@@ -20,17 +20,10 @@ from tests.utils import make_dt
 
 
 @pytest.fixture
-def mock_load_config():
-    """Fixture to mock load_config."""
-    with patch("recall.main.load_config") as mock:
-        yield mock
-
-
-@pytest.fixture
-def mock_collect_events():
-    """Fixture to mock collect_events."""
-    with patch("recall.main.collect_events") as mock:
-        yield mock
+def mock_valid_cli_args():
+    """Simulate a clean 'recall' run with only the executable name."""
+    with patch("sys.argv", ["recall"]):
+        yield
 
 
 @pytest.fixture
@@ -38,6 +31,27 @@ def mock_parse_arguments():
     """Fixture to mock parse_arguments."""
     with patch("recall.main.parse_arguments") as mock:
         mock.return_value = make_dt(0)
+        yield mock
+
+
+@pytest.fixture
+def mock_load_config():
+    """Fixture to mock load_config."""
+    with patch("recall.main.load_config") as mock:
+        yield mock
+
+
+@pytest.fixture
+def mock_init_collectors_from_config():
+    """Fixture to mock init_collectors_from_config."""
+    with patch("recall.main.init_collectors_from_config") as mock:
+        yield mock
+
+
+@pytest.fixture
+def mock_collect_events():
+    """Fixture to mock collect_events."""
+    with patch("recall.main.collect_events") as mock:
         yield mock
 
 
@@ -101,6 +115,7 @@ async def test_main_handles_parse_error(
 
 
 @pytest.mark.asyncio
+@pytest.mark.usefixtures("mock_valid_cli_args")
 async def test_main_succeeds_with_valid_config(
     mock_load_config: MagicMock,
     mock_collect_events: MagicMock,
@@ -127,6 +142,7 @@ async def test_main_succeeds_with_valid_config(
 
 
 @pytest.mark.asyncio
+@pytest.mark.usefixtures("mock_valid_cli_args")
 @patch("recall.main.console")
 async def test_main_config_not_found(
     mock_console: MagicMock,
@@ -145,6 +161,7 @@ async def test_main_config_not_found(
 
 
 @pytest.mark.asyncio
+@pytest.mark.usefixtures("mock_valid_cli_args")
 @patch("recall.main.console")
 async def test_main_config_error(
     mock_console: MagicMock,
@@ -160,8 +177,11 @@ async def test_main_config_error(
 
 
 @pytest.mark.asyncio
+@pytest.mark.usefixtures("mock_valid_cli_args")
 async def test_main_no_collectors_enabled(
+    mock_parse_arguments: MagicMock,
     mock_load_config: MagicMock,
+    mock_init_collectors_from_config: MagicMock,
     mock_collect_events: MagicMock,
 ):
     """Test main's behavior when the config has no enabled collectors."""
@@ -171,6 +191,9 @@ async def test_main_no_collectors_enabled(
 
     await main()
 
+    mock_parse_arguments.assert_called_once()
+    mock_load_config.assert_called_once()
+    mock_init_collectors_from_config.assert_called_once()
     mock_collect_events.assert_not_called()
 
 
@@ -343,7 +366,7 @@ async def test_collect_events_with_error_and_spinner():
 
 
 @pytest.mark.asyncio
-@pytest.mark.usefixtures("interactive_false")
+@pytest.mark.usefixtures("interactive_true", "mock_valid_cli_args")
 async def test_main_non_interactive_mode(
     mock_load_config: MagicMock,
     mock_collect_events: MagicMock,
@@ -361,7 +384,7 @@ async def test_main_non_interactive_mode(
 
 @patch("recall.main.yaspin")
 @pytest.mark.asyncio
-@pytest.mark.usefixtures("interactive_true")
+@pytest.mark.usefixtures("interactive_true", "mock_valid_cli_args")
 async def test_main_interactive_mode(
     mock_yaspin: MagicMock,
     mock_collect_events: MagicMock,
@@ -391,6 +414,7 @@ async def test_main_interactive_mode(
     "interactive_false",
     "mock_load_config",
     "mock_parse_arguments",
+    "mock_valid_cli_args",
 )
 @patch("recall.main.console")
 async def test_main_no_events_found(
