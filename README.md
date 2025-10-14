@@ -63,72 +63,27 @@ specify a date in `YYYY-MM-DD` format to get the activity for that specific day.
 recall 2025-01-01
 ```
 
-### Example output
-
-```
-$ recall YYYY-MM-DD
-    - ✅ Firefox collector found X events.
-    - ✅ Calendar collector found X events.
-    - ✅ GitLab collector found X events.
-    - ✅ Shell collector found X events.
-    - ✅ Slack collector found X events.
-
---- Summarized Activity Timeline for YYYY-MM-DD ---
-
-[day YYYY-MM-DD 09:02:15] [Calendar] Meeting: Daily Stand-up (15 min)
-↳ https://calendar.google.com/calendar/r/eventedit/xxxxxxxx
-
-[day YYYY-MM-DD 09:17:30] [Shell] git status
-
-[day YYYY-MM-DD 09:18:05] [GitLab] Pushed 2 commit(s) to branch 'feature/new-api-endpoint'
-↳ https://gitlab.com/your-group/your-project/-/commits/feature/new-api-endpoint
-
-[day YYYY-MM-DD 09:25:11] [Firefox] How to implement asyncio in Python - Google Search
-↳ https://www.google.com/search?q=how+to+implement+asyncio+in+python
-
-[day YYYY-MM-DD 10:45:03] [Slack] Message in #development-team:
-┌───────────────────────────────────────────────────────────────────────────┐
-│ @here Could someone please review my latest merge request? It's ready for │
-│ testing.                                                                  │
-└───────────────────────────────────────────────────────────────────────────┘
-↳ https://your-workspace.slack.com/archives/C0XXXXXXX/p1664811903000000
-
-[day YYYY-MM-DD 11:30:55] [GitLab] Commented on merge_request:
-┌───────────────────────────────────────────────────────────────────────────┐
-│ Looks good overall! Just one minor suggestion regarding the error         │
-│ handling.                                                                 │
-└───────────────────────────────────────────────────────────────────────────┘
-↳ https://gitlab.com/your-group/your-project/-/merge_requests/123#note_987654
-
-[day YYYY-MM-DD 14:00:20] [Shell] docker-compose up --build -d
-
-[day YYYY-MM-DD 14:10:48] [Firefox] Project Dashboard - Jira
-↳ https://your-company.atlassian.net/jira/software/projects/PROJ/boards/1
-```
-
 ## Configuration
 
-The tool uses a combination of environment variables and configuration files.
+The tool is configured using a single YAML file located at
+`~/.config/recall/config.yaml`.
 
-### Global configuration file
-
-Create a global configuration file to the `.config` directory in your home
-directory:
+A template for this file is provided as `config.yaml.tpl`. You can copy this
+template to `~/.config/recall/config.yaml` and edit it to your needs:
 
 ```bash
 mkdir -p ~/.config/recall
-touch ~/.config/recall/config.env
+cp config.yaml.tpl ~/.config/recall/config.yaml
 ```
 
-Add your secrets to this `config.env` file. Read the following section section
-for collector-specific setup instructions.
-
-The tool also supports loading environment variables from a `.env` file in the
-current working directory. This is useful for testing and development purposes.
+The configuration file consists of a list of `sources`, where each source is a
+collector with its own specific settings. You can enable or disable collectors
+and provide the necessary credentials or parameters for each one.
 
 ### Collector-specific configurations
 
-This section describes the setup required for each collector.
+This section describes the setup required for each collector within the
+`config.yaml` file.
 
 #### Google Calendar
 
@@ -143,34 +98,67 @@ don't need to authorize again.
 
 #### GitLab
 
-Add the following to your `config.env` file:
+Add your GitLab instance URL, private access token, and user ID to the `config`
+section of the GitLab source in your `config.yaml`:
 
-```
-GITLAB_URL="https://your.gitlab-instance.com"
-GITLAB_PRIVATE_TOKEN="your_personal_access_token"
-GITLAB_USER_ID="your_gitlab_user_id"
+```yaml
+- id: "GitLab"
+  type: "gitlab"
+  enabled: true
+  config:
+    url: "https://your.gitlab-instance.com"
+    private_token: "your_personal_access_token"
+    user_id: 12345
 ```
 
 #### Slack
 
-> [!note]
-> This collector is not available yet to public use. This is currently being
-> tested internally.
-
 - You need a Slack User Token. You can generate one for your workspace.
-- Add the following to your `config.env` file:
+- Add your Slack user token to the `config` section of the Slack source in your
+`config.yaml`:
 
+```yaml
+- id: "Slack"
+  type: "slack"
+  enabled: true
+  config:
+    user_token: "xoxp-..."
 ```
-SLACK_USER_TOKEN="xoxp-..."
+
+#### Firefox
+
+No special configuration is needed in your `config.yaml`. The collector will
+automatically try to find your Firefox `places.sqlite` database.
+
+```yaml
+- id: "Firefox"
+  type: "firefox"
+  enabled: true
+  config: {}
 ```
+
+Here are the default locations that are supported currently:
+
+- Linux: `~/.mozilla/firefox/` or `snap/firefox/common/.mozilla/firefox`
+- macOS: `Library/Application Support/Firefox`
+- Windows: `AppData/Roaming/Mozilla/Firefox/Profiles`
 
 #### Shell history
 
-This collector reads from a custom history file located at
-`~/.recall.log` by default. This is required to generate
-timestamps even if the commands are executed in different shells (e.g., when
-using `tmux`). It is recommended to add these lines to your `.bashrc` to
-ensure this:
+This collector reads from a custom history file. By default, this is located at
+`~/.recall_shell_history.log`. You can override this path in your
+`config.yaml`.
+
+```yaml
+- id: "Shell"
+  type: "shell"
+  enabled: true
+  config:
+    log_file_path: "/path/to/your/custom_history.log" # Optional
+```
+
+To generate timestamps for your shell commands, it is recommended to add the
+following lines to your `.bashrc` or equivalent shell configuration file:
 
 ```bash
 HISTTIMEFORMAT="%Y-%m-%dT%H:%M:%S%z "
@@ -188,17 +176,6 @@ log_prompt_command() {
 
 export PROMPT_COMMAND="log_prompt_command"
 ```
-
-#### Firefox
-
-No special configuration is needed. The collector automatically tries to find
-your Firefox `places.sqlite` database.
-
-Here are the default locations that are supported currently:
-
-- Linux: `~/.mozilla/firefox/` or `snap/firefox/common/.mozilla/firefox`
-- macOS: `Library/Application Support/Firefox`
-- Windows: `AppData/Roaming/Mozilla/Firefox/Profiles`
 
 ## Extending the Tool
 
