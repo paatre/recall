@@ -2,6 +2,7 @@ import argparse
 import asyncio
 import sys
 from datetime import datetime, timezone, tzinfo
+from pathlib import Path
 from typing import Any
 
 from rich.console import Console
@@ -22,7 +23,7 @@ from .utils.summarizer import summarize_events
 console = Console()
 
 
-def parse_arguments() -> datetime:
+def parse_arguments() -> tuple[datetime, Path | None]:
     """Parse command-line arguments to get the target date."""
     parser = argparse.ArgumentParser(
         description="Collect activity data from various sources for a specific date.",
@@ -33,14 +34,23 @@ def parse_arguments() -> datetime:
         help="The date to collect data for in YYYY-MM-DD format. Defaults to today.",
         default=(datetime.now(timezone.utc)).strftime("%Y-%m-%d"),
     )
+    parser.add_argument(
+        "-c",
+        "--config",
+        type=Path,
+        help="Path to the configuration file.",
+        default=None,
+    )
     args = parser.parse_args()
 
     try:
         local_tz = datetime.now().astimezone().tzinfo
-        return datetime.strptime(args.date, "%Y-%m-%d").replace(tzinfo=local_tz)
+        target_date = datetime.strptime(args.date, "%Y-%m-%d").replace(tzinfo=local_tz)
     except ValueError as e:
         msg = "Invalid date format. Please use YYYY-MM-DD."
         raise ValueError(msg) from e
+    else:
+        return target_date, args.config
 
 
 def get_collector_map() -> dict[str, type[BaseCollector]]:
@@ -157,13 +167,13 @@ async def main() -> None:
     Prints a unified, chronologically sorted timeline of events.
     """
     try:
-        target_date = parse_arguments()
+        target_date, config_path = parse_arguments()
     except ValueError as e:
         console.print(f"❌ Error: {e}")
         return
 
     try:
-        config = load_config()
+        config = load_config(config_path)
     except (ConfigError, ConfigNotFoundError) as e:
         console.print(f"❌ Error loading config: {e}")
         return

@@ -41,6 +41,13 @@ def test_load_config_not_found():
         load_config(non_existent_path)
 
 
+@pytest.mark.usefixtures("fs")
+def test_load_config_default_not_found():
+    """Test that ConfigNotFoundError is raised for a non-existent file."""
+    with pytest.raises(ConfigNotFoundError):
+        load_config()
+
+
 def test_load_config_yaml_error(fs: FakeFilesystem):
     """Test that ConfigError is raised for a malformed YAML file."""
     config_path = "/fake/path/malformed.yaml"
