@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+import contextlib
 import sys
 from datetime import datetime, timezone, tzinfo
 from pathlib import Path
@@ -235,7 +236,8 @@ async def main() -> None:
 
 
 def _main() -> None:
-    asyncio.run(main())  # pragma: no cover
+    with contextlib.suppress(KeyboardInterrupt):
+        asyncio.run(main())  # pragma: no cover
 
 
 if __name__ == "__main__":
