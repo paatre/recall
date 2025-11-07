@@ -7,7 +7,7 @@ timesheets, write progress reports, or simply reflect on your day.
 
 ## Prerequisites
 
-- Python 3.9 or higher
+- Python 3.10 or higher
 - `uv` tool for building and installing the package, and also for development
   purposes
 - Access to the data sources you want to collect activity from (e.g., Google
