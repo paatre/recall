@@ -2,7 +2,7 @@ import argparse
 import asyncio
 import contextlib
 import sys
-from datetime import datetime, timezone, tzinfo
+from datetime import datetime, time, timezone, tzinfo
 from pathlib import Path
 from typing import Any
 
@@ -24,7 +24,7 @@ from .utils.summarizer import summarize_events
 console = Console()
 
 
-def parse_arguments() -> tuple[datetime, Path | None]:
+def parse_arguments() -> tuple[datetime, datetime, Path | None]:
     """Parse command-line arguments to get the target date."""
     parser = argparse.ArgumentParser(
         description="Collect activity data from various sources for a specific date.",
@@ -42,16 +42,40 @@ def parse_arguments() -> tuple[datetime, Path | None]:
         help="Path to the configuration file.",
         default=None,
     )
+    parser.add_argument(
+        "-s",
+        "--start-time",
+        help="The start time in HH:MM:SS format. Defaults to 00:00:00.",
+        default="00:00:00",
+    )
+    parser.add_argument(
+        "-e",
+        "--end-time",
+        help="The end time in HH:MM:SS format. Defaults to 23:59:59.",
+        default="23:59:59",
+    )
     args = parser.parse_args()
 
     try:
         local_tz = datetime.now().astimezone().tzinfo
-        target_date = datetime.strptime(args.date, "%Y-%m-%d").replace(tzinfo=local_tz)
+        target_date = datetime.strptime(args.date, "%Y-%m-%d").astimezone(local_tz)
+        start_time = time.fromisoformat(args.start_time)
+        end_time = time.fromisoformat(args.end_time)
     except ValueError as e:
-        msg = "Invalid date format. Please use YYYY-MM-DD."
+        msg = "Invalid date/time format. Please use YYYY-MM-DD and HH:MM:SS formats."
         raise ValueError(msg) from e
     else:
-        return target_date, args.config
+        start_datetime = target_date.replace(
+            hour=start_time.hour,
+            minute=start_time.minute,
+            second=start_time.second,
+        )
+        end_datetime = target_date.replace(
+            hour=end_time.hour,
+            minute=end_time.minute,
+            second=end_time.second,
+        )
+        return start_datetime, end_datetime, args.config
 
 
 def get_collector_map() -> dict[str, type[BaseCollector]]:
@@ -168,7 +192,7 @@ async def main() -> None:
     Prints a unified, chronologically sorted timeline of events.
     """
     try:
-        target_date, config_path = parse_arguments()
+        start_time, end_time, config_path = parse_arguments()
     except ValueError as e:
         console.print(f"❌ Error: {e}")
         return
@@ -184,24 +208,7 @@ async def main() -> None:
         console.print("No collectors are enabled in the configuration.")
         return
 
-    start_time = datetime(
-        target_date.year,
-        target_date.month,
-        target_date.day,
-        0,
-        0,
-        0,
-        tzinfo=target_date.tzinfo,
-    )
-    end_time = datetime(
-        target_date.year,
-        target_date.month,
-        target_date.day,
-        23,
-        59,
-        59,
-        tzinfo=target_date.tzinfo,
-    )
+    target_date = start_time
 
     if is_interactive():
         with yaspin(
@@ -230,7 +237,7 @@ async def main() -> None:
     console.print(
         f"\n--- Summarized Activity Timeline for {target_date_str} ---\n",
     )
-    local_tz = datetime.now().astimezone().tzinfo
+    local_tz = target_date.tzinfo
     for event in summarized:
         print_formatted_event(event, date_str, local_tz)
 
