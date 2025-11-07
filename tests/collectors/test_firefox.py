@@ -1,7 +1,7 @@
 import platform
 import sqlite3
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 from unittest.mock import MagicMock, patch
 
 import pytest
