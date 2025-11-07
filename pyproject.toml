@@ -7,7 +7,7 @@ name = "recall"
 version = "0.1.0"
 description = "A tool to aggregate your digital activity, creating a perfect memory of your day."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
     "google-api-python-client>=2.183.0",
     "google-auth-httplib2>=0.2.0",
