@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta, timezone
-from typing import Optional
 
 import gitlab
 from gitlab.exceptions import GitlabAuthenticationError, GitlabError
@@ -27,7 +26,7 @@ class GitLabCollector(BaseCollector):
         project_id: int,
         project_url_cache: dict,
         gl_client: gitlab.Gitlab,
-    ) -> Optional[str]:
+    ) -> str | None:
         """Fetch and cache the base URL of a GitLab project."""
         if not project_id:
             return None
@@ -47,7 +46,7 @@ class GitLabCollector(BaseCollector):
         event: GitLabEvent,
         project_url_cache: dict,
         gl_client: gitlab.Gitlab,
-    ) -> Optional[str]:
+    ) -> str | None:
         """Construct a direct URL to the event's target (MR, issue, comment, etc.).
 
         Uses a cache to avoid redundant API calls for project URLs.

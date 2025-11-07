@@ -3,7 +3,6 @@ import platform
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
 
 from .base import BaseCollector, Event
 
@@ -78,7 +77,7 @@ class FirefoxCollector(BaseCollector):
         results.sort()
         return results
 
-    def _get_db_path(self) -> Optional[Path]:
+    def _get_db_path(self) -> Path | None:
         """Find the places.sqlite file by parsing profiles.ini."""
         for base_path in self._get_base_paths():
             profiles_ini = base_path / "profiles.ini"
