@@ -29,7 +29,7 @@ def parse_flexible_time(time_str: str) -> time:
     parts = time_str.split(":")
 
     match parts:
-        case [h]:
+        case [h] if h:
             h_str, m_str, s_str = h, "0", "0"
         case [h, m]:
             h_str, m_str, s_str = h, m, "0"
