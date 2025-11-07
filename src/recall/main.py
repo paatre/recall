@@ -24,6 +24,35 @@ from .utils.summarizer import summarize_events
 console = Console()
 
 
+def parse_flexible_time(time_str: str) -> time:
+    """Parse a time string in H, H:M, or H:M:S format."""
+    parts = time_str.split(":")
+
+    match parts:
+        case [h]:
+            h_str, m_str, s_str = h, "0", "0"
+        case [h, m]:
+            h_str, m_str, s_str = h, m, "0"
+        case [h, m, s]:
+            h_str, m_str, s_str = h, m, s
+        case _:
+            invalid_time_format_error = (
+                f"Invalid time format in '{time_str}'. Expected H, H:M, or H:M:S."
+            )
+            raise ValueError(invalid_time_format_error)
+
+    try:
+        hour = int(h_str)
+        minute = int(m_str)
+        second = int(s_str)
+
+        return time(hour=hour, minute=minute, second=second)
+
+    except (ValueError, TypeError) as err:
+        invalid_time_value_error = f"Invalid time value in '{time_str}'"
+        raise ValueError(invalid_time_value_error) from err
+
+
 def parse_arguments() -> tuple[datetime, datetime, Path | None]:
     """Parse command-line arguments to get the target date."""
     parser = argparse.ArgumentParser(
@@ -59,8 +88,8 @@ def parse_arguments() -> tuple[datetime, datetime, Path | None]:
     try:
         local_tz = datetime.now().astimezone().tzinfo
         target_date = datetime.strptime(args.date, "%Y-%m-%d").astimezone(local_tz)
-        start_time = time.fromisoformat(args.start_time)
-        end_time = time.fromisoformat(args.end_time)
+        start_time = parse_flexible_time(args.start_time)
+        end_time = parse_flexible_time(args.end_time)
     except ValueError as e:
         msg = "Invalid date/time format. Please use YYYY-MM-DD and HH:MM:SS formats."
         raise ValueError(msg) from e
