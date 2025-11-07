@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
 
 
 @dataclass
@@ -11,8 +10,8 @@ class Event:
     timestamp: datetime
     source: str
     description: str
-    duration_minutes: Optional[int] = None
-    url: Optional[str] = None
+    duration_minutes: int | None = None
+    url: str | None = None
 
 
 class BaseCollector(ABC):
