@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, time, timezone
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -15,6 +15,7 @@ from recall.main import (
     is_interactive,
     main,
     parse_arguments,
+    parse_flexible_time,
     print_formatted_event,
 )
 from tests.utils import make_dt
@@ -72,9 +73,45 @@ def interactive_false():
         yield
 
 
+@pytest.mark.parametrize(
+    ("time_str", "expected"),
+    [
+        ("9", time(9, 0, 0)),
+        ("09", time(9, 0, 0)),
+        ("9:30", time(9, 30, 0)),
+        ("09:05", time(9, 5, 0)),
+        ("14:30:15", time(14, 30, 15)),
+    ],
+)
+def test_parse_flexible_time_valid(time_str: str, expected: time):
+    """Test valid time formats for parse_flexible_time."""
+    assert parse_flexible_time(time_str) == expected
+
+
+@pytest.mark.parametrize(
+    ("invalid_str", "error_msg_part"),
+    [
+        ("", "Invalid time format"),
+        ("1:2:3:4", "Invalid time format"),
+        ("foo", "Invalid time value"),
+        ("9:a", "Invalid time value"),
+        ("25", "Invalid time value"),
+        ("10:70", "Invalid time value"),
+        ("10:10:99", "Invalid time value"),
+    ],
+)
+def test_parse_flexible_time_invalid(invalid_str: str, error_msg_part: str):
+    """Test invalid formats and values for parse_flexible_time."""
+    with pytest.raises(ValueError, match=error_msg_part):
+        parse_flexible_time(invalid_str)
+
+
 @patch("recall.main.argparse.ArgumentParser")
-@patch("recall.main.time")
-def test_parse_arguments_no_date(mock_time: MagicMock, mock_arg_parser: MagicMock):
+@patch("recall.main.parse_flexible_time")
+def test_parse_arguments_with_date(
+    mock_parse_flexible_time: MagicMock,
+    mock_arg_parser: MagicMock,
+):
     """Test that the default date (today) is used when none is provided."""
     mock_args = MagicMock(
         date="2025-10-12",
@@ -84,9 +121,9 @@ def test_parse_arguments_no_date(mock_time: MagicMock, mock_arg_parser: MagicMoc
     )
     mock_arg_parser.return_value.parse_args.return_value = mock_args
 
-    mock_start_time_obj = MagicMock(hour=0, minute=0, second=0)
-    mock_end_time_obj = MagicMock(hour=23, minute=59, second=59)
-    mock_time.fromisoformat.side_effect = [mock_start_time_obj, mock_end_time_obj]
+    mock_start_time_obj = time(hour=0, minute=0, second=0)
+    mock_end_time_obj = time(hour=23, minute=59, second=59)
+    mock_parse_flexible_time.side_effect = [mock_start_time_obj, mock_end_time_obj]
 
     with patch("recall.main.datetime") as mock_datetime:
         mock_target_date = MagicMock(tzinfo=timezone.utc)
@@ -103,48 +140,8 @@ def test_parse_arguments_no_date(mock_time: MagicMock, mock_arg_parser: MagicMoc
 
         assert result == (mock_start_datetime, mock_end_datetime, None)
         mock_datetime.strptime.assert_called_with("2025-10-12", "%Y-%m-%d")
-        mock_time.fromisoformat.assert_any_call("00:00:00")
-        mock_time.fromisoformat.assert_any_call("23:59:59")
-
-
-@patch("recall.main.argparse.ArgumentParser")
-@patch("recall.main.time")
-def test_parse_arguments_with_date(mock_time: MagicMock, mock_arg_parser: MagicMock):
-    """Test parsing a specific, valid date."""
-    mock_args = MagicMock(
-        date="2025-10-12",
-        start_time="00:00:00",
-        end_time="23:59:59",
-        config=None,
-    )
-    mock_arg_parser.return_value.parse_args.return_value = mock_args
-
-    mock_start_time_obj = MagicMock(hour=0, minute=0, second=0)
-    mock_end_time_obj = MagicMock(hour=23, minute=59, second=59)
-    mock_time.fromisoformat.side_effect = [mock_start_time_obj, mock_end_time_obj]
-
-    with patch("recall.main.datetime") as mock_datetime:
-        mock_local_tz = MagicMock()
-        mock_datetime.now.return_value.astimezone.return_value.tzinfo = mock_local_tz
-
-        mock_target_date = MagicMock(tzinfo=mock_local_tz)
-        mock_datetime.strptime.return_value.astimezone.return_value = mock_target_date
-
-        mock_start_datetime = MagicMock(spec=datetime)
-        mock_end_datetime = MagicMock(spec=datetime)
-        mock_target_date.replace.side_effect = [
-            mock_start_datetime,
-            mock_end_datetime,
-        ]
-
-        start_datetime, end_datetime, config_path = parse_arguments()
-
-        mock_datetime.strptime.assert_called_with("2025-10-12", "%Y-%m-%d")
-        mock_time.fromisoformat.assert_any_call("00:00:00")
-        mock_time.fromisoformat.assert_any_call("23:59:59")
-        assert start_datetime == mock_start_datetime
-        assert end_datetime == mock_end_datetime
-        assert config_path is None
+        mock_parse_flexible_time.assert_any_call("00:00:00")
+        mock_parse_flexible_time.assert_any_call("23:59:59")
 
 
 @pytest.mark.asyncio
