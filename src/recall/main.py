@@ -2,7 +2,7 @@ import argparse
 import asyncio
 import contextlib
 import sys
-from datetime import datetime, time, timezone, tzinfo
+from datetime import date, datetime, time, timedelta, timezone, tzinfo
 from pathlib import Path
 from typing import Any
 
@@ -22,6 +22,53 @@ from .config import ConfigError, ConfigNotFoundError, load_config
 from .utils.summarizer import summarize_events
 
 console = Console()
+
+
+def parse_flexible_date(date_str: str) -> date:
+    """Parse a date string in YYYY-MM-DD format or with keywords.
+
+    Supports keywords like "today", "yesterday", or a weekday (e.g., "friday" or "fri").
+    """
+    date_str = date_str.strip().lower()
+    local_today = datetime.now().astimezone().date()
+
+    if date_str == "today":
+        return local_today
+    if date_str == "yesterday":
+        return local_today - timedelta(days=1)
+
+    day_map = {
+        "monday": 0,
+        "mon": 0,
+        "tuesday": 1,
+        "tue": 1,
+        "wednesday": 2,
+        "wed": 2,
+        "thursday": 3,
+        "thu": 3,
+        "friday": 4,
+        "fri": 4,
+        "saturday": 5,
+        "sat": 5,
+        "sunday": 6,
+        "sun": 6,
+    }
+
+    if date_str in day_map:
+        target_weekday = day_map[date_str]
+        today_weekday = local_today.weekday()
+
+        days_ago = (today_weekday - target_weekday + 7) % 7
+
+        return local_today - timedelta(days=days_ago)
+
+    try:
+        return date.fromisoformat(date_str)
+    except ValueError as e:
+        value_error_msg = (
+            f"Invalid date '{date_str}'. Use YYYY-MM-DD, today, yesterday, or weekday.",
+        )
+        raise ValueError(value_error_msg) from e
 
 
 def parse_flexible_time(time_str: str) -> time:
@@ -87,19 +134,25 @@ def parse_arguments() -> tuple[datetime, datetime, Path | None]:
 
     try:
         local_tz = datetime.now().astimezone().tzinfo
-        target_date = datetime.strptime(args.date, "%Y-%m-%d").astimezone(local_tz)
+        target_date = parse_flexible_date(args.date)
         start_time = parse_flexible_time(args.start_time)
         end_time = parse_flexible_time(args.end_time)
     except ValueError as e:
         msg = "Invalid date/time format. Please use YYYY-MM-DD and HH:MM:SS formats."
         raise ValueError(msg) from e
     else:
-        start_datetime = target_date.replace(
+        base_datetime = datetime(
+            year=target_date.year,
+            month=target_date.month,
+            day=target_date.day,
+            tzinfo=local_tz,
+        )
+        start_datetime = base_datetime.replace(
             hour=start_time.hour,
             minute=start_time.minute,
             second=start_time.second,
         )
-        end_datetime = target_date.replace(
+        end_datetime = base_datetime.replace(
             hour=end_time.hour,
             minute=end_time.minute,
             second=end_time.second,

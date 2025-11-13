@@ -1,4 +1,4 @@
-from datetime import datetime, time, timezone
+from datetime import date, datetime, time, timezone, tzinfo
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -15,6 +15,7 @@ from recall.main import (
     is_interactive,
     main,
     parse_arguments,
+    parse_flexible_date,
     parse_flexible_time,
     print_formatted_event,
 )
@@ -106,9 +107,49 @@ def test_parse_flexible_time_invalid(invalid_str: str, error_msg_part: str):
         parse_flexible_time(invalid_str)
 
 
+@pytest.mark.parametrize(
+    ("date_str", "expected_date"),
+    [
+        ("2024-12-31", date(2024, 12, 31)),
+        ("today", date(2025, 10, 15)),
+        ("ToDAY", date(2025, 10, 15)),  # Test case insensitivity
+        ("yesterday", date(2025, 10, 14)),
+        ("monday", date(2025, 10, 13)),
+        ("TUE", date(2025, 10, 14)),  # Abbreviated weekday
+        ("friday", date(2025, 10, 10)),
+        ("sun", date(2025, 10, 12)),
+        ("wednesday", date(2025, 10, 15)),
+        ("thu", date(2025, 10, 9)),
+    ],
+)
+@time_machine.travel(datetime(2025, 10, 15, 12, 0, 0, tzinfo=timezone.utc))
+def test_parse_flexible_date_valid(date_str: str, expected_date: date):
+    """Test valid date strings for parse_flexible_date."""
+    assert parse_flexible_date(date_str) == expected_date
+
+
+@pytest.mark.parametrize(
+    "invalid_str",
+    [
+        "10-25-2024",  # Wrong format
+        "2024/10/25",  # Wrong format
+        "next week",  # Unsupported keyword
+        "todayish",  # Misspelled keyword
+        "2024-13-01",  # Invalid month
+        "2024-01-32",  # Invalid day
+    ],
+)
+def test_parse_flexible_date_invalid(invalid_str: str):
+    """Test invalid date strings raise a ValueError."""
+    with pytest.raises(ValueError, match="Invalid date"):
+        parse_flexible_date(invalid_str)
+
+
 @patch("recall.main.argparse.ArgumentParser")
 @patch("recall.main.parse_flexible_time")
+@patch("recall.main.parse_flexible_time")
 def test_parse_arguments_with_date(
+    mock_parse_flexible_date: MagicMock,
     mock_parse_flexible_time: MagicMock,
     mock_arg_parser: MagicMock,
 ):
@@ -121,17 +162,24 @@ def test_parse_arguments_with_date(
     )
     mock_arg_parser.return_value.parse_args.return_value = mock_args
 
+    mock_date_obj = date(2025, 10, 12)
+    mock_parse_flexible_date.return_value = mock_date_obj
+
     mock_start_time_obj = time(hour=0, minute=0, second=0)
     mock_end_time_obj = time(hour=23, minute=59, second=59)
     mock_parse_flexible_time.side_effect = [mock_start_time_obj, mock_end_time_obj]
 
     with patch("recall.main.datetime") as mock_datetime:
-        mock_target_date = MagicMock(tzinfo=timezone.utc)
-        mock_datetime.strptime.return_value.astimezone.return_value = mock_target_date
+        mock_local_tz = MagicMock(spec=tzinfo)
+        mock_datetime.now.return_value.astimezone.return_value.tzinfo = mock_local_tz
+
+        mock_base_datetime = MagicMock(spec=datetime)
+        mock_datetime.return_value = mock_base_datetime
 
         mock_start_datetime = MagicMock(spec=datetime)
         mock_end_datetime = MagicMock(spec=datetime)
-        mock_target_date.replace.side_effect = [
+
+        mock_base_datetime.replace.side_effect = [
             mock_start_datetime,
             mock_end_datetime,
         ]
@@ -139,9 +187,23 @@ def test_parse_arguments_with_date(
         result = parse_arguments()
 
         assert result == (mock_start_datetime, mock_end_datetime, None)
-        mock_datetime.strptime.assert_called_with("2025-10-12", "%Y-%m-%d")
-        mock_parse_flexible_time.assert_any_call("00:00:00")
-        mock_parse_flexible_time.assert_any_call("23:59:59")
+
+        mock_datetime.assert_called_with(
+            year=mock_date_obj.year,
+            month=mock_date_obj.month,
+            day=mock_date_obj.day,
+            tzinfo=mock_local_tz,
+        )
+        mock_base_datetime.replace.assert_any_call(
+            hour=mock_start_time_obj.hour,
+            minute=mock_start_time_obj.minute,
+            second=mock_start_time_obj.second,
+        )
+        mock_base_datetime.replace.assert_any_call(
+            hour=mock_end_time_obj.hour,
+            minute=mock_end_time_obj.minute,
+            second=mock_end_time_obj.second,
+        )
 
 
 @pytest.mark.asyncio
