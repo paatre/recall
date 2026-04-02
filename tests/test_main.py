@@ -147,7 +147,7 @@ def test_parse_flexible_date_invalid(invalid_str: str):
 
 @patch("recall.main.argparse.ArgumentParser")
 @patch("recall.main.parse_flexible_time")
-@patch("recall.main.parse_flexible_time")
+@patch("recall.main.parse_flexible_date")
 def test_parse_arguments_with_date(
     mock_parse_flexible_date: MagicMock,
     mock_parse_flexible_time: MagicMock,
@@ -170,11 +170,8 @@ def test_parse_arguments_with_date(
     mock_parse_flexible_time.side_effect = [mock_start_time_obj, mock_end_time_obj]
 
     with patch("recall.main.datetime") as mock_datetime:
-        mock_local_tz = MagicMock(spec=tzinfo)
-        mock_datetime.now.return_value.astimezone.return_value.tzinfo = mock_local_tz
-
         mock_base_datetime = MagicMock(spec=datetime)
-        mock_datetime.return_value = mock_base_datetime
+        mock_datetime.return_value.astimezone.return_value = mock_base_datetime
 
         mock_start_datetime = MagicMock(spec=datetime)
         mock_end_datetime = MagicMock(spec=datetime)
@@ -192,8 +189,8 @@ def test_parse_arguments_with_date(
             year=mock_date_obj.year,
             month=mock_date_obj.month,
             day=mock_date_obj.day,
-            tzinfo=mock_local_tz,
         )
+        mock_datetime.return_value.astimezone.assert_called_once()
         mock_base_datetime.replace.assert_any_call(
             hour=mock_start_time_obj.hour,
             minute=mock_start_time_obj.minute,
@@ -358,9 +355,10 @@ def test_is_interactive_false(mock_isatty: MagicMock):
 def test_print_formatted_event_simple(mock_console: MagicMock):
     """Test printing a basic event."""
     event = Event(timestamp=make_dt(10), source="Test", description="Simple event")
-    print_formatted_event(event, "test_date", timezone.utc)
+    print_formatted_event(event, "test_date")
+    expected_time = event.timestamp.astimezone().strftime("%H:%M:%S")
     mock_console.print.assert_any_call(
-        r"\[test_date 09:10:00] [Test] Simple event",
+        rf"\[test_date {expected_time}] [Test] Simple event",
     )
 
 
@@ -377,9 +375,10 @@ def test_print_formatted_event_with_url_and_duration(
         url="http://example.com",
         duration_minutes=5,
     )
-    print_formatted_event(event, "test_date", timezone.utc)
+    print_formatted_event(event, "test_date")
+    expected_time = event.timestamp.astimezone().strftime("%H:%M:%S")
     mock_console.print.assert_any_call(
-        r"\[test_date 09:15:00] [Test] Event with URL (5 min)",
+        rf"\[test_date {expected_time}] [Test] Event with URL (5 min)",
     )
     mock_console.print.assert_any_call("↳ http://example.com")
 
@@ -393,7 +392,7 @@ def test_print_formatted_event_special_case_slack(mock_console: MagicMock):
         source="Slack",
         description="Message in #channel:\n\nHello world",
     )
-    print_formatted_event(event, "test_date", timezone.utc)
+    print_formatted_event(event, "test_date")
     assert any("Panel" in str(call) for call in mock_console.print.call_args_list)
 
 
@@ -404,12 +403,11 @@ def test_print_formatted_event_no_tz_fixed(
     mock_console: MagicMock,
 ):
     """Test printing an event without a local timezone provided."""
-    local_tz = datetime.now().astimezone().tzinfo
     event = Event(timestamp=make_dt(10), source="Test", description="No TZ test")
 
-    print_formatted_event(event, "test_date", None)
+    print_formatted_event(event, "test_date")
 
-    local_timestamp = event.timestamp.astimezone(local_tz)
+    local_timestamp = event.timestamp.astimezone()
     expected_time = local_timestamp.strftime("%H:%M:%S")
     mock_console.print.assert_any_call(
         rf"\[test_date {expected_time}] [Test] No TZ test",
@@ -427,12 +425,50 @@ def test_print_formatted_event_split_failure(mock_console: MagicMock):
         description=description,
     )
 
-    print_formatted_event(event, "test_date", timezone.utc)
+    print_formatted_event(event, "test_date")
 
+    expected_time = event.timestamp.astimezone().strftime("%H:%M:%S")
     mock_console.print.assert_any_call(
-        rf"\[test_date 09:25:00] [Slack] {description}",
+        rf"\[test_date {expected_time}] [Slack] {description}",
     )
     mock_console.print.assert_called_with()
+
+
+def test_print_formatted_event_dst(monkeypatch: pytest.MonkeyPatch):
+    """Test daylight saving time shifts for printing an event."""
+    monkeypatch.setenv("TZ", "Europe/Berlin")
+
+    if hasattr(time, "tzset"):
+        time.tzset()
+
+    event_winter = Event(
+        timestamp=datetime(2025, 1, 1, 9, 0, 0, tzinfo=timezone.utc),
+        source="Test",
+        description="Winter event",
+    )
+    event_summer = Event(
+        timestamp=datetime(2025, 7, 1, 9, 0, 0, tzinfo=timezone.utc),
+        source="Test",
+        description="Summer event",
+    )
+
+    with patch("recall.main.console") as mock_console:
+        print_formatted_event(event_winter, "test_date")
+        mock_console.print.assert_any_call(
+            r"\[test_date 10:00:00] [Test] Winter event",
+        )
+
+    with patch("recall.main.console") as mock_console:
+        print_formatted_event(event_summer, "test_date")
+        mock_console.print.assert_any_call(
+            r"\[test_date 11:00:00] [Test] Summer event",
+        )
+
+    # Revert tzset for subsequent tests, since monkeypatch only
+    # reverts the env var at the end of the test.
+    monkeypatch.setenv("TZ", "UTC")
+    if hasattr(time, "tzset"):
+        time.tzset()
 
 
 @pytest.mark.asyncio
