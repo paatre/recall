@@ -1,4 +1,6 @@
-from datetime import date, datetime, time, timezone, tzinfo
+import time
+from datetime import date, datetime, timezone
+from datetime import time as dt_time
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -77,14 +79,14 @@ def interactive_false():
 @pytest.mark.parametrize(
     ("time_str", "expected"),
     [
-        ("9", time(9, 0, 0)),
-        ("09", time(9, 0, 0)),
-        ("9:30", time(9, 30, 0)),
-        ("09:05", time(9, 5, 0)),
-        ("14:30:15", time(14, 30, 15)),
+        ("9", dt_time(9, 0, 0)),
+        ("09", dt_time(9, 0, 0)),
+        ("9:30", dt_time(9, 30, 0)),
+        ("09:05", dt_time(9, 5, 0)),
+        ("14:30:15", dt_time(14, 30, 15)),
     ],
 )
-def test_parse_flexible_time_valid(time_str: str, expected: time):
+def test_parse_flexible_time_valid(time_str: str, expected: dt_time):
     """Test valid time formats for parse_flexible_time."""
     assert parse_flexible_time(time_str) == expected
 
@@ -165,8 +167,8 @@ def test_parse_arguments_with_date(
     mock_date_obj = date(2025, 10, 12)
     mock_parse_flexible_date.return_value = mock_date_obj
 
-    mock_start_time_obj = time(hour=0, minute=0, second=0)
-    mock_end_time_obj = time(hour=23, minute=59, second=59)
+    mock_start_time_obj = dt_time(hour=0, minute=0, second=0)
+    mock_end_time_obj = dt_time(hour=23, minute=59, second=59)
     mock_parse_flexible_time.side_effect = [mock_start_time_obj, mock_end_time_obj]
 
     with patch("recall.main.datetime") as mock_datetime:
@@ -356,9 +358,8 @@ def test_print_formatted_event_simple(mock_console: MagicMock):
     """Test printing a basic event."""
     event = Event(timestamp=make_dt(10), source="Test", description="Simple event")
     print_formatted_event(event, "test_date")
-    expected_time = event.timestamp.astimezone().strftime("%H:%M:%S")
     mock_console.print.assert_any_call(
-        rf"\[test_date {expected_time}] [Test] Simple event",
+        r"\[test_date 09:10:00] [Test] Simple event",
     )
 
 
@@ -376,9 +377,8 @@ def test_print_formatted_event_with_url_and_duration(
         duration_minutes=5,
     )
     print_formatted_event(event, "test_date")
-    expected_time = event.timestamp.astimezone().strftime("%H:%M:%S")
     mock_console.print.assert_any_call(
-        rf"\[test_date {expected_time}] [Test] Event with URL (5 min)",
+        r"\[test_date 09:15:00] [Test] Event with URL (5 min)",
     )
     mock_console.print.assert_any_call("↳ http://example.com")
 
@@ -407,10 +407,8 @@ def test_print_formatted_event_no_tz_fixed(
 
     print_formatted_event(event, "test_date")
 
-    local_timestamp = event.timestamp.astimezone()
-    expected_time = local_timestamp.strftime("%H:%M:%S")
     mock_console.print.assert_any_call(
-        rf"\[test_date {expected_time}] [Test] No TZ test",
+        r"\[test_date 09:10:00] [Test] No TZ test",
     )
 
 
@@ -427,9 +425,8 @@ def test_print_formatted_event_split_failure(mock_console: MagicMock):
 
     print_formatted_event(event, "test_date")
 
-    expected_time = event.timestamp.astimezone().strftime("%H:%M:%S")
     mock_console.print.assert_any_call(
-        rf"\[test_date {expected_time}] [Slack] {description}",
+        rf"\[test_date 09:25:00] [Slack] {description}",
     )
     mock_console.print.assert_called_with()
 
