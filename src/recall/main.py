@@ -2,7 +2,7 @@ import argparse
 import asyncio
 import contextlib
 import sys
-from datetime import date, datetime, time, timedelta, timezone, tzinfo
+from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -133,7 +133,6 @@ def parse_arguments() -> tuple[datetime, datetime, Path | None]:
     args = parser.parse_args()
 
     try:
-        local_tz = datetime.now().astimezone().tzinfo
         target_date = parse_flexible_date(args.date)
         start_time = parse_flexible_time(args.start_time)
         end_time = parse_flexible_time(args.end_time)
@@ -145,8 +144,7 @@ def parse_arguments() -> tuple[datetime, datetime, Path | None]:
             year=target_date.year,
             month=target_date.month,
             day=target_date.day,
-            tzinfo=local_tz,
-        )
+        ).astimezone()
         start_datetime = base_datetime.replace(
             hour=start_time.hour,
             minute=start_time.minute,
@@ -192,12 +190,9 @@ def is_interactive() -> bool:
     return sys.stdout.isatty()
 
 
-def print_formatted_event(event: Event, date_str: str, local_tz: tzinfo | None) -> None:
+def print_formatted_event(event: Event, date_str: str) -> None:
     """Print a formatted event, with special handling for Slack and GitLab."""
-    if local_tz:
-        local_timestamp = event.timestamp.astimezone(local_tz)
-    else:
-        local_timestamp = event.timestamp.astimezone()
+    local_timestamp = event.timestamp.astimezone()
     source = f"[{event.source}]"
     duration_str = (
         f"({event.duration_minutes} min)"
@@ -319,9 +314,8 @@ async def main() -> None:
     console.print(
         f"\n--- Summarized Activity Timeline for {target_date_str} ---\n",
     )
-    local_tz = target_date.tzinfo
     for event in summarized:
-        print_formatted_event(event, date_str, local_tz)
+        print_formatted_event(event, date_str)
 
 
 def _main() -> None:
