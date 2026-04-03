@@ -346,7 +346,7 @@ async def main() -> None:  # noqa: C901, PLR0912, PLR0915
     if not raw_output:
         if is_interactive():
             with yaspin(
-                text="🤖 Generating Seepra timesheet with GitHub Copilot...",
+                text="🤖 Generating timesheet with GitHub Copilot...",
                 color="cyan",
             ) as spinner:
                 try:
@@ -364,7 +364,7 @@ async def main() -> None:  # noqa: C901, PLR0912, PLR0915
                     console.print(f"Error generating timesheet: {e}")
                     return
         else:
-            console.print("🤖 Generating Seepra timesheet with GitHub Copilot...")
+            console.print("🤖 Generating timesheet with GitHub Copilot...")
             try:
                 from .llm import generate_timesheet  # noqa: PLC0415
 
@@ -373,41 +373,43 @@ async def main() -> None:  # noqa: C901, PLR0912, PLR0915
                 console.print(f"❌ Error generating timesheet: {e}")
                 return
 
-        console.print(
-            f"\n--- Seepra Timesheet Draft for {target_date_str} ---\n",
-        )
-        if not timesheet:
-            console.print("No timesheet blocks were generated.")
-        else:
-            for block in timesheet:
-                start = block.get("start_time", "??:??")
-                end = block.get("end_time", "??:??")
-                dur = block.get("duration_hours", 0)
-                ctx = block.get("context", "Unknown")
-                desc = block.get("description", "")
+        with console.pager(styles=True):
+            console.print(
+                f"\n--- Timesheet Draft for {target_date_str} ---\n",
+            )
+            if not timesheet:
+                console.print("No timesheet blocks were generated.")
+            else:
+                for block in timesheet:
+                    start = block.get("start_time", "??:??")
+                    end = block.get("end_time", "??:??")
+                    dur = block.get("duration_hours", 0)
+                    ctx = block.get("context", "Unknown")
+                    desc = block.get("description", "")
 
-                header_text = f"[{start} - {end}] ({dur}h) | Context: {ctx}"
+                    header_text = f"[{start} - {end}] ({dur}h) | Context: {ctx}"
 
-                tree = Tree(f'↳ "{desc}"')
-                if not no_events:
-                    for e in block.get("_events", []):
-                        time_str = e.timestamp.astimezone().strftime("%H:%M:%S")
-                        tree.add(f"[{time_str}] [{e.source}] {e.description}")
+                    tree = Tree(f'↳ "{desc}"')
+                    if not no_events:
+                        for e in block.get("_events", []):
+                            time_str = e.timestamp.astimezone().strftime("%H:%M:%S")
+                            tree.add(f"[{time_str}] [{e.source}] {e.description}")
 
-                panel = Panel(
-                    tree,
-                    title=header_text,
-                    title_align="left",
-                    border_style="cyan",
-                )
-                console.print(panel)
-                console.print()
+                    panel = Panel(
+                        tree,
+                        title=header_text,
+                        title_align="left",
+                        border_style="cyan",
+                    )
+                    console.print(panel)
+                    console.print()
     else:
-        console.print(
-            f"\n--- Summarized Activity Timeline for {target_date_str} ---\n",
-        )
-        for event in summarized:
-            print_formatted_event(event, date_str)
+        with console.pager(styles=True):
+            console.print(
+                f"\n--- Summarized Activity Timeline for {target_date_str} ---\n",
+            )
+            for event in summarized:
+                print_formatted_event(event, date_str)
 
 
 def _main() -> None:
