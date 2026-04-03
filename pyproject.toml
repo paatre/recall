@@ -8,6 +8,25 @@ version = "0.1.0"
 description = "A tool to aggregate your digital activity, creating a perfect memory of your day."
 readme = "README.md"
 requires-python = ">=3.10"
+authors = [
+    { name = "Teemu Viikeri", email = "tepavi@gmail.com" },
+]
+license = { text = "MIT" }
+keywords = ["productivity", "cli", "timesheet", "time-tracking", "activity-tracker"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Utilities",
+]
 dependencies = [
     "google-api-python-client>=2.183.0",
     "google-auth-httplib2>=0.2.0",
@@ -34,6 +53,11 @@ dev = [
 
 [project.scripts]
 recall = "recall.main:_main"
+
+[project.urls]
+Homepage = "https://github.com/paatre/recall"
+Repository = "https://github.com/paatre/recall.git"
+Issues = "https://github.com/paatre/recall/issues"
 
 [tool.coverage.report]
 show_missing = true
