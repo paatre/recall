@@ -577,12 +577,16 @@ async def test_main_no_events_found(
     mock_console.print.assert_any_call("\nNo activity found for the specified date.")
 
 
+@patch("recall.main.main", new_callable=MagicMock)
 @patch("recall.main.asyncio.run")
-def test_main_entrypoint_suppresses_keyboard_interrupt(mock_asyncio_run: MagicMock):
+def test_main_entrypoint_suppresses_keyboard_interrupt(
+    mock_asyncio_run: MagicMock,
+    mock_main: MagicMock,
+):
     """Test that _main() correctly suppresses a KeyboardInterrupt raised by asyncio.run.
 
     The test passes if no KeyboardInterrupt is propagated outside of _main().
     """
     mock_asyncio_run.side_effect = KeyboardInterrupt
     _main()
-    mock_asyncio_run.assert_called_once()
+    mock_asyncio_run.assert_called_once_with(mock_main.return_value)
