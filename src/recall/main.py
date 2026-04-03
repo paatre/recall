@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 import contextlib
+import os
 import sys
 from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
@@ -439,6 +440,7 @@ async def main() -> None:
 
     Prints a unified, chronologically sorted timeline of events.
     """
+    os.environ["PAGER"] = "less -X -F -R"
     try:
         (
             start_time,
