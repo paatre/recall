@@ -309,7 +309,7 @@ async def process_and_display_date(  # noqa: PLR0913
     raw_output: bool,
     model: str | None,
     no_events: bool,
-    custom_instructions: str,
+    llm_config: dict[str, Any],
 ) -> None:
     """Process and display events for a given date."""
     target_date = start_time
@@ -344,7 +344,7 @@ async def process_and_display_date(  # noqa: PLR0913
             summarized,
             target_date_str,
             model,
-            custom_instructions,
+            llm_config,
             no_events,
         )
 
@@ -366,13 +366,15 @@ def _generate_and_display_timesheet(
     summarized: list[Event],
     target_date_str: str,
     model: str | None,
-    custom_instructions: str,
+    llm_config: dict[str, Any],
     no_events: bool,  # noqa: FBT001
 ) -> None:
     timesheet = None
+    provider = llm_config.get("provider", "github").capitalize()
+
     if is_interactive():
         with yaspin(
-            text="🤖 Generating timesheet with GitHub Copilot...",
+            text=f"🤖 Generating timesheet with {provider}...",
             color="cyan",
         ) as spinner:
             try:
@@ -381,8 +383,8 @@ def _generate_and_display_timesheet(
                 timesheet = generate_timesheet(
                     summarized,
                     target_date_str,
+                    llm_config,
                     model,
-                    custom_instructions,
                 )
                 spinner.ok("✅ ")
             except Exception as e:  # noqa: BLE001
@@ -390,11 +392,16 @@ def _generate_and_display_timesheet(
                 console.print(f"Error generating timesheet: {e}")
                 return
     else:
-        console.print("🤖 Generating timesheet with GitHub Copilot...")
+        console.print(f"🤖 Generating timesheet with {provider}...")
         try:
             from .llm import generate_timesheet  # noqa: PLC0415
 
-            timesheet = generate_timesheet(summarized, target_date_str, model)
+            timesheet = generate_timesheet(
+                summarized,
+                target_date_str,
+                llm_config,
+                model,
+            )
         except Exception as e:  # noqa: BLE001
             console.print(f"❌ Error generating timesheet: {e}")
             return
@@ -434,7 +441,7 @@ def _generate_and_display_timesheet(
                 console.print()
 
 
-async def main() -> None:
+async def main() -> None:  # noqa: C901
     """Run all enabled collectors for a given date.
 
     Prints a unified, chronologically sorted timeline of events.
@@ -480,7 +487,7 @@ async def main() -> None:
         console.print("No collectors are enabled in the configuration.")
         return
 
-    custom_instructions = config.get("llm", {}).get("custom_instructions", "")
+    llm_config = config.get("llm", {})
 
     current_start_time = start_time
     current_end_time = end_time
@@ -493,7 +500,7 @@ async def main() -> None:
             raw_output=raw_output,
             model=model,
             no_events=no_events,
-            custom_instructions=custom_instructions,
+            llm_config=llm_config,
         )
 
         if not is_interactive():

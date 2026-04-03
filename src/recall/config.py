@@ -37,6 +37,9 @@ sources:
       user_token: ""
 
 llm:
+  provider: "github" # "github", "openai", or "custom"
+  api_key: ""        # Optional. If empty, uses 'gh' CLI for github, or OPENAI_API_KEY
+  base_url: ""       # Optional. Set to override default API endpoint
   custom_instructions: ""
 """
 

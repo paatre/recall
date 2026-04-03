@@ -40,19 +40,39 @@ def load_prompt_template() -> str:
         raise RuntimeError(msg) from e
 
 
-def generate_timesheet(
+def generate_timesheet(  # noqa: C901
     events: list[Event],
     target_date: str,
+    llm_config: dict[str, Any],
     model: str | None = None,
-    custom_instructions: str = "",
 ) -> list[dict[str, Any]]:
-    """Generate a grouped timesheet using GitHub Copilot Models."""
-    token = get_gh_token()
+    """Generate a grouped timesheet using an LLM."""
+    provider = llm_config.get("provider", "github")
+    api_key = llm_config.get("api_key", "")
+    base_url = llm_config.get("base_url", "")
+    custom_instructions = llm_config.get("custom_instructions", "")
+
+    if provider == "github":
+        if not api_key:
+            api_key = get_gh_token()
+        base_url = base_url or "https://models.inference.ai.azure.com"
+        model_name = model or "gpt-4o"
+    elif provider == "openai":
+        base_url = base_url or "https://api.openai.com/v1"
+        model_name = model or "gpt-4o"
+    elif provider == "custom":
+        if not base_url:
+            msg = "A base_url is required when provider is 'custom'"
+            raise RuntimeError(msg)
+        model_name = model or "gpt-4"
+    else:
+        msg = f"Unknown llm provider: {provider}"
+        raise RuntimeError(msg)
+
     client = OpenAI(
-        base_url="https://models.inference.ai.azure.com",
-        api_key=token,
+        base_url=base_url if base_url else None,
+        api_key=api_key if api_key else None,
     )
-    model_name = model or "gpt-4o"
     prompt_template = load_prompt_template()
 
     # Create a mapping of event IDs to Events
