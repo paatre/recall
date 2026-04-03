@@ -456,7 +456,23 @@ async def main() -> None:
 
     try:
         config = load_config(config_path)
-    except (ConfigError, ConfigNotFoundError) as e:
+    except ConfigNotFoundError as e:
+        if config_path is None:
+            from .config import (  # noqa: PLC0415
+                DEFAULT_CONFIG_PATH,
+                create_default_config,
+            )
+
+            create_default_config(DEFAULT_CONFIG_PATH)
+            console.print(
+                f"✨ Created default config at [bold cyan]{DEFAULT_CONFIG_PATH}[/].\n"
+                "Please edit it to enable your sources, then run recall again.",
+            )
+            return
+
+        console.print(f"❌ Error loading config: {e}")
+        return
+    except ConfigError as e:
         console.print(f"❌ Error loading config: {e}")
         return
 

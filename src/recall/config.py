@@ -5,6 +5,41 @@ import yaml
 
 DEFAULT_CONFIG_PATH = Path("~/.config/recall/config.yaml").expanduser()
 
+DEFAULT_CONFIG_CONTENT = """\
+sources:
+  - id: "Firefox"
+    type: "firefox"
+    enabled: true
+    config: {}
+
+  - id: "Calendar"
+    type: "gcalendar"
+    enabled: true
+    config: {}
+
+  - id: "GitLab"
+    type: "gitlab"
+    enabled: true
+    config:
+      url: ""
+      private_token: ""
+      user_id: 0
+
+  - id: "Shell"
+    type: "shell"
+    enabled: true
+    config: {}
+
+  - id: "Slack"
+    type: "slack"
+    enabled: true
+    config:
+      user_token: ""
+
+llm:
+  custom_instructions: ""
+"""
+
 
 class ConfigError(Exception):
     """Base exception for configuration errors."""
@@ -15,6 +50,12 @@ class ConfigNotFoundError(ConfigError, FileNotFoundError):
 
     def __init__(self, path: Path) -> None:
         super().__init__(f"Configuration file not found at {path}")
+
+
+def create_default_config(path: Path) -> None:
+    """Create the default configuration file."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(DEFAULT_CONFIG_CONTENT)
 
 
 def load_config(config_path: Path | None = None) -> dict[str, Any]:

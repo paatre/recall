@@ -264,7 +264,6 @@ async def test_main_succeeds_with_valid_config(
 
 
 @pytest.mark.asyncio
-@pytest.mark.usefixtures("mock_valid_cli_args")
 @patch("recall.main.console")
 async def test_main_config_not_found(
     mock_console: MagicMock,
@@ -274,7 +273,8 @@ async def test_main_config_not_found(
     test_path = Path("/non/existent/config.yaml")
     mock_load_config.side_effect = ConfigNotFoundError(test_path)
 
-    await main()
+    with patch("sys.argv", ["recall", "--config", str(test_path)]):
+        await main()
 
     expected_message = (
         f"❌ Error loading config: Configuration file not found at {test_path}"
