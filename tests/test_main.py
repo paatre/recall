@@ -38,7 +38,7 @@ def mock_parse_arguments() -> Iterator[MagicMock]:
     with patch("recall.main.parse_arguments") as mock:
         start_time = make_dt(0).replace(hour=0, minute=0, second=0)
         end_time = make_dt(0).replace(hour=23, minute=59, second=59)
-        mock.return_value = (start_time, end_time, None, False, None, False)
+        mock.return_value = (start_time, end_time, None, True, None, False)
         yield mock
 
 
@@ -162,8 +162,9 @@ def test_parse_arguments_with_date(
         start_time="00:00:00",
         end_time="23:59:59",
         config=None,
-        timesheet=False,
+        raw=False,
         model=None,
+        no_events=True,
     )
     mock_arg_parser.return_value.parse_args.return_value = mock_args
 
@@ -194,7 +195,7 @@ def test_parse_arguments_with_date(
             None,
             False,
             None,
-            mock_args.show_events,
+            True,
         )
 
         mock_datetime.assert_called_with(

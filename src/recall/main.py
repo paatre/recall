@@ -132,9 +132,9 @@ def parse_arguments() -> tuple[datetime, datetime, Path | None, bool, str | None
         default="23:59:59",
     )
     parser.add_argument(
-        "--timesheet",
+        "--raw",
         action="store_true",
-        help="Generate a Seepra-compatible timesheet draft using GitHub Copilot.",
+        help="Output the raw event timeline instead of generating a timesheet.",
     )
     parser.add_argument(
         "--model",
@@ -142,9 +142,9 @@ def parse_arguments() -> tuple[datetime, datetime, Path | None, bool, str | None
         default=None,
     )
     parser.add_argument(
-        "--show-events",
+        "--no-events",
         action="store_true",
-        help="Display the underlying raw events beneath each timesheet block.",
+        help="Hide the underlying raw events beneath each timesheet block.",
     )
     args = parser.parse_args()
 
@@ -175,9 +175,9 @@ def parse_arguments() -> tuple[datetime, datetime, Path | None, bool, str | None
             start_datetime,
             end_datetime,
             args.config,
-            args.timesheet,
+            args.raw,
             args.model,
-            args.show_events,
+            args.no_events,
         )
 
 
@@ -296,9 +296,9 @@ async def main() -> None:  # noqa: C901, PLR0912, PLR0915
             start_time,
             end_time,
             config_path,
-            use_timesheet,
+            raw_output,
             model,
-            show_events,
+            no_events,
         ) = parse_arguments()
     except ValueError as e:
         console.print(f"❌ Error: {e}")
@@ -341,7 +341,7 @@ async def main() -> None:  # noqa: C901, PLR0912, PLR0915
     target_date_str = target_date.strftime("%Y-%m-%d")
     date_str = f"{day_abbr} {target_date_str}"
 
-    if use_timesheet:
+    if not raw_output:
         if is_interactive():
             with yaspin(
                 text="🤖 Generating Seepra timesheet with GitHub Copilot...",
@@ -381,23 +381,20 @@ async def main() -> None:  # noqa: C901, PLR0912, PLR0915
 
                 header_text = f"[{start} - {end}] ({dur}h) | Context: {ctx}"
 
-                if show_events:
-                    tree = Tree(f'↳ "{desc}"')
+                tree = Tree(f'↳ "{desc}"')
+                if not no_events:
                     for e in block.get("_events", []):
                         time_str = e.timestamp.astimezone().strftime("%H:%M:%S")
                         tree.add(f"[{time_str}] [{e.source}] {e.description}")
 
-                    panel = Panel(
-                        tree,
-                        title=header_text,
-                        title_align="left",
-                        border_style="cyan",
-                    )
-                    console.print(panel)
-                    console.print()
-                else:
-                    console.print(header_text)
-                    console.print(f'↳ "{desc}"\n')
+                panel = Panel(
+                    tree,
+                    title=header_text,
+                    title_align="left",
+                    border_style="cyan",
+                )
+                console.print(panel)
+                console.print()
     else:
         console.print(
             f"\n--- Summarized Activity Timeline for {target_date_str} ---\n",
