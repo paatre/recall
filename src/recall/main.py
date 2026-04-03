@@ -9,6 +9,7 @@ from typing import Any
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
+from rich.tree import Tree
 from yaspin import yaspin
 from yaspin.core import Yaspin
 
@@ -100,7 +101,7 @@ def parse_flexible_time(time_str: str) -> time:
         raise ValueError(invalid_time_value_error) from err
 
 
-def parse_arguments() -> tuple[datetime, datetime, Path | None]:
+def parse_arguments() -> tuple[datetime, datetime, Path | None, bool, str | None, bool]:
     """Parse command-line arguments to get the target date."""
     parser = argparse.ArgumentParser(
         description="Collect activity data from various sources for a specific date.",
@@ -130,6 +131,21 @@ def parse_arguments() -> tuple[datetime, datetime, Path | None]:
         help="The end time in HH:MM:SS format. Defaults to 23:59:59.",
         default="23:59:59",
     )
+    parser.add_argument(
+        "--raw",
+        action="store_true",
+        help="Output the raw event timeline instead of generating a timesheet.",
+    )
+    parser.add_argument(
+        "--model",
+        help="LLM model to use for timesheets (e.g. gpt-4o, gpt-4o-mini).",
+        default=None,
+    )
+    parser.add_argument(
+        "--no-events",
+        action="store_true",
+        help="Hide the underlying raw events beneath each timesheet block.",
+    )
     args = parser.parse_args()
 
     try:
@@ -155,7 +171,14 @@ def parse_arguments() -> tuple[datetime, datetime, Path | None]:
             minute=end_time.minute,
             second=end_time.second,
         )
-        return start_datetime, end_datetime, args.config
+        return (
+            start_datetime,
+            end_datetime,
+            args.config,
+            args.raw,
+            args.model,
+            args.no_events,
+        )
 
 
 def get_collector_map() -> dict[str, type[BaseCollector]]:
@@ -263,13 +286,20 @@ async def collect_events(
     return all_events
 
 
-async def main() -> None:
+async def main() -> None:  # noqa: C901, PLR0912, PLR0915
     """Run all enabled collectors for a given date.
 
     Prints a unified, chronologically sorted timeline of events.
     """
     try:
-        start_time, end_time, config_path = parse_arguments()
+        (
+            start_time,
+            end_time,
+            config_path,
+            raw_output,
+            model,
+            no_events,
+        ) = parse_arguments()
     except ValueError as e:
         console.print(f"❌ Error: {e}")
         return
@@ -311,11 +341,73 @@ async def main() -> None:
     target_date_str = target_date.strftime("%Y-%m-%d")
     date_str = f"{day_abbr} {target_date_str}"
 
-    console.print(
-        f"\n--- Summarized Activity Timeline for {target_date_str} ---\n",
-    )
-    for event in summarized:
-        print_formatted_event(event, date_str)
+    custom_instructions = config.get("llm", {}).get("custom_instructions", "")
+
+    if not raw_output:
+        if is_interactive():
+            with yaspin(
+                text="🤖 Generating Seepra timesheet with GitHub Copilot...",
+                color="cyan",
+            ) as spinner:
+                try:
+                    from .llm import generate_timesheet  # noqa: PLC0415
+
+                    timesheet = generate_timesheet(
+                        summarized,
+                        target_date_str,
+                        model,
+                        custom_instructions,
+                    )
+                    spinner.ok("✅ ")
+                except Exception as e:  # noqa: BLE001
+                    spinner.fail("❌ ")
+                    console.print(f"Error generating timesheet: {e}")
+                    return
+        else:
+            console.print("🤖 Generating Seepra timesheet with GitHub Copilot...")
+            try:
+                from .llm import generate_timesheet  # noqa: PLC0415
+
+                timesheet = generate_timesheet(summarized, target_date_str, model)
+            except Exception as e:  # noqa: BLE001
+                console.print(f"❌ Error generating timesheet: {e}")
+                return
+
+        console.print(
+            f"\n--- Seepra Timesheet Draft for {target_date_str} ---\n",
+        )
+        if not timesheet:
+            console.print("No timesheet blocks were generated.")
+        else:
+            for block in timesheet:
+                start = block.get("start_time", "??:??")
+                end = block.get("end_time", "??:??")
+                dur = block.get("duration_hours", 0)
+                ctx = block.get("context", "Unknown")
+                desc = block.get("description", "")
+
+                header_text = f"[{start} - {end}] ({dur}h) | Context: {ctx}"
+
+                tree = Tree(f'↳ "{desc}"')
+                if not no_events:
+                    for e in block.get("_events", []):
+                        time_str = e.timestamp.astimezone().strftime("%H:%M:%S")
+                        tree.add(f"[{time_str}] [{e.source}] {e.description}")
+
+                panel = Panel(
+                    tree,
+                    title=header_text,
+                    title_align="left",
+                    border_style="cyan",
+                )
+                console.print(panel)
+                console.print()
+    else:
+        console.print(
+            f"\n--- Summarized Activity Timeline for {target_date_str} ---\n",
+        )
+        for event in summarized:
+            print_formatted_event(event, date_str)
 
 
 def _main() -> None:
