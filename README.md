@@ -108,23 +108,53 @@ $ recall YYYY-MM-DD
 
 ## Configuration
 
-The tool uses a combination of environment variables and configuration files.
+The tool uses a YAML configuration file to manage collectors and their settings.
 
 ### Global configuration file
 
-Create a global configuration file to the `.config` directory in your home
+Create a global configuration file in the `.config` directory in your home
 directory:
 
 ```bash
 mkdir -p ~/.config/recall
-touch ~/.config/recall/config.env
+touch ~/.config/recall/config.yaml
 ```
 
-Add your secrets to this `config.env` file. Read the following section section
-for collector-specific setup instructions.
+Add your settings and secrets to this `config.yaml` file. Here is a template:
 
-The tool also supports loading environment variables from a `.env` file in the
-current working directory. This is useful for testing and development purposes.
+```yaml
+sources:
+  - id: "Firefox"
+    type: "firefox"
+    enabled: true
+    config: {}
+
+  - id: "Calendar"
+    type: "gcalendar"
+    enabled: true
+    config: {}
+
+  - id: "GitLab"
+    type: "gitlab"
+    enabled: true
+    config:
+      url: ""
+      private_token: ""
+      user_id: 0
+
+  - id: "Shell"
+    type: "shell"
+    enabled: true
+    config: {}
+
+  - id: "Slack"
+    type: "slack"
+    enabled: true
+    config:
+      user_token: ""
+```
+
+Read the following section for collector-specific setup instructions.
 
 ### Collector-specific configurations
 
@@ -143,12 +173,13 @@ don't need to authorize again.
 
 #### GitLab
 
-Add the following to your `config.env` file:
+Add your GitLab settings to your `config.yaml` file under the GitLab source config:
 
-```
-GITLAB_URL="https://your.gitlab-instance.com"
-GITLAB_PRIVATE_TOKEN="your_personal_access_token"
-GITLAB_USER_ID="your_gitlab_user_id"
+```yaml
+    config:
+      url: "https://your.gitlab-instance.com"
+      private_token: "your_personal_access_token"
+      user_id: 12345
 ```
 
 #### Slack
@@ -158,10 +189,11 @@ GITLAB_USER_ID="your_gitlab_user_id"
 > tested internally.
 
 - You need a Slack User Token. You can generate one for your workspace.
-- Add the following to your `config.env` file:
+- Add the token to your `config.yaml` file under the Slack source config:
 
-```
-SLACK_USER_TOKEN="xoxp-..."
+```yaml
+    config:
+      user_token: "xoxp-..."
 ```
 
 #### Shell history
