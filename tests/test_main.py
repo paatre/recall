@@ -1,4 +1,5 @@
 import time
+from collections.abc import Iterator
 from datetime import date, datetime, timezone
 from datetime import time as dt_time
 from pathlib import Path
@@ -32,12 +33,12 @@ def mock_valid_cli_args():
 
 
 @pytest.fixture
-def mock_parse_arguments():
+def mock_parse_arguments() -> Iterator[MagicMock]:
     """Fixture to mock parse_arguments."""
     with patch("recall.main.parse_arguments") as mock:
         start_time = make_dt(0).replace(hour=0, minute=0, second=0)
         end_time = make_dt(0).replace(hour=23, minute=59, second=59)
-        mock.return_value = (start_time, end_time, None)
+        mock.return_value = (start_time, end_time, None, False, None, False)
         yield mock
 
 
@@ -161,6 +162,8 @@ def test_parse_arguments_with_date(
         start_time="00:00:00",
         end_time="23:59:59",
         config=None,
+        timesheet=False,
+        model=None,
     )
     mock_arg_parser.return_value.parse_args.return_value = mock_args
 
@@ -185,7 +188,14 @@ def test_parse_arguments_with_date(
 
         result = parse_arguments()
 
-        assert result == (mock_start_datetime, mock_end_datetime, None)
+        assert result == (
+            mock_start_datetime,
+            mock_end_datetime,
+            None,
+            False,
+            None,
+            mock_args.show_events,
+        )
 
         mock_datetime.assert_called_with(
             year=mock_date_obj.year,
@@ -546,7 +556,7 @@ async def test_main_interactive_mode(
 
     await main()
 
-    start_datetime, _, _ = mock_parse_arguments.return_value
+    start_datetime, _, _, _, _, _ = mock_parse_arguments.return_value
     expected_date = start_datetime.strftime("%Y-%m-%d")
     expected_text = f"🚀 Collecting activity for {expected_date}..."
     mock_yaspin.assert_called_once_with(
