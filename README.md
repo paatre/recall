@@ -57,10 +57,12 @@ recall
 ```
 
 The tool will generate a timeline for today's activity by default. You can also
-specify a date in `YYYY-MM-DD` format to get the activity for that specific day.
+specify a date in `YYYY-MM-DD` format, or use keywords like `today`, `yesterday`, or a weekday (e.g., `friday` or `mon`) to get the activity for that specific day.
 
 ```bash
 recall 2025-01-01
+recall yesterday
+recall friday
 ```
 
 ### Example output
@@ -72,38 +74,24 @@ $ recall YYYY-MM-DD
     - ✅ GitLab collector found X events.
     - ✅ Shell collector found X events.
     - ✅ Slack collector found X events.
+🤖 Generating timesheet with Github...
 
---- Summarized Activity Timeline for YYYY-MM-DD ---
+--- Timesheet Draft for YYYY-MM-DD ---
 
-[day YYYY-MM-DD 09:02:15] [Calendar] Meeting: Daily Stand-up (15 min)
-↳ https://calendar.google.com/calendar/r/eventedit/xxxxxxxx
+╭─ [09:00 - 10:00] (1.0h) | Context: Calendar: Daily Sync, Slack: #team-alpha ──────────────╮
+│ ↳ "Attended daily stand-up and discussed project requirements with the team."             │
+│ ├── [09:00:00] [Calendar] Meeting: Daily Sync                                             │
+│ ├── [09:15:22] [Slack] Message in #team-alpha: "Here are the notes from today."           │
+│ └── [09:45:10] [Firefox] Project Requirements - Confluence                                │
+╰───────────────────────────────────────────────────────────────────────────────────────────╯
 
-[day YYYY-MM-DD 09:17:30] [Shell] git status
-
-[day YYYY-MM-DD 09:18:05] [GitLab] Pushed 2 commit(s) to branch 'feature/new-api-endpoint'
-↳ https://gitlab.com/your-group/your-project/-/commits/feature/new-api-endpoint
-
-[day YYYY-MM-DD 09:25:11] [Firefox] How to implement asyncio in Python - Google Search
-↳ https://www.google.com/search?q=how+to+implement+asyncio+in+python
-
-[day YYYY-MM-DD 10:45:03] [Slack] Message in #development-team:
-┌───────────────────────────────────────────────────────────────────────────┐
-│ @here Could someone please review my latest merge request? It's ready for │
-│ testing.                                                                  │
-└───────────────────────────────────────────────────────────────────────────┘
-↳ https://your-workspace.slack.com/archives/C0XXXXXXX/p1664811903000000
-
-[day YYYY-MM-DD 11:30:55] [GitLab] Commented on merge_request:
-┌───────────────────────────────────────────────────────────────────────────┐
-│ Looks good overall! Just one minor suggestion regarding the error         │
-│ handling.                                                                 │
-└───────────────────────────────────────────────────────────────────────────┘
-↳ https://gitlab.com/your-group/your-project/-/merge_requests/123#note_987654
-
-[day YYYY-MM-DD 14:00:20] [Shell] docker-compose up --build -d
-
-[day YYYY-MM-DD 14:10:48] [Firefox] Project Dashboard - Jira
-↳ https://your-company.atlassian.net/jira/software/projects/PROJ/boards/1
+╭─ [10:00 - 12:00] (2.0h) | Context: GitLab: alpha-project, Shell: local dev ───────────────╮
+│ ↳ "Implemented the new authentication flow and created a merge request."                  │
+│ ├── [10:05:12] [Shell] git checkout -b feature/auth-flow                                  │
+│ ├── [10:30:45] [Firefox] How to use JWT tokens - Google Search                            │
+│ ├── [11:45:30] [Shell] git commit -m "feat: add jwt auth"                                 │
+│ └── [11:55:10] [GitLab] Opened merge request: Add JWT authentication                      │
+╰───────────────────────────────────────────────────────────────────────────────────────────╯
 ```
 
 ## Configuration
@@ -152,6 +140,12 @@ sources:
     enabled: true
     config:
       user_token: ""
+
+llm:
+  provider: "github" # "github", "openai", or "custom"
+  api_key: ""        # Optional. If empty, uses 'gh' CLI for github, or OPENAI_API_KEY
+  base_url: ""       # Optional. Set to override default API endpoint
+  custom_instructions: ""
 ```
 
 Read the following section for collector-specific setup instructions.
@@ -239,7 +233,8 @@ You can easily add new data sources by creating a new collector.
 1. Create a new file in the `src/recall/collectors/` directory (e.g., `my_collector.py`).
 2. In this file, create a class that inherits from `BaseCollector` (from `collectors/base.py`).
 3. Implement the `name()` and `collect()` methods. The `collect()` method must be `async` and return a list of `Event` objects.
-4. Add your new collector class to the `ENABLED_COLLECTORS` list in `src/recall/main.py`.
+4. Add your new collector class to the `get_collector_map()` function in `src/recall/main.py`.
+5. Enable and configure it in your `~/.config/recall/config.yaml` file.
 
 ## Contributing
 
