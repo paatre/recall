@@ -333,8 +333,7 @@ async def process_and_display_date(  # noqa: PLR0913
     all_events.sort(key=lambda x: x.timestamp)
     summarized = summarize_events(all_events)
 
-    day_map = {0: "ma", 1: "ti", 2: "ke", 3: "to", 4: "pe", 5: "la", 6: "su"}
-    day_abbr = day_map[target_date.weekday()]
+    day_abbr = target_date.strftime("%a")
     target_date_str = target_date.strftime("%Y-%m-%d")
     date_str = f"{day_abbr} {target_date_str}"
 
