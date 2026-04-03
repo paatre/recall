@@ -10,6 +10,8 @@ Rules:
 6. Ensure the time blocks roughly cover the span of the events without overlapping.
 7. Crucially, each event provided to you has an ID in brackets at the start (e.g., [ID: 42]). You MUST return a list of integer `event_ids` that fall within each time block you create.
 
+{custom_instructions}
+
 Events:
 {events_text}
 

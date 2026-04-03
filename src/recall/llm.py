@@ -44,6 +44,7 @@ def generate_timesheet(
     events: list[Event],
     target_date: str,
     model: str | None = None,
+    custom_instructions: str = "",
 ) -> list[dict[str, Any]]:
     """Generate a grouped timesheet using GitHub Copilot Models."""
     token = get_gh_token()
@@ -77,6 +78,7 @@ def generate_timesheet(
         prompt = prompt_template.format(
             target_date=target_date,
             events_text=events_text,
+            custom_instructions=custom_instructions,
         )
 
         response = client.chat.completions.create(

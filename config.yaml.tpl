@@ -27,3 +27,6 @@ sources:
     enabled: true
     config:
       user_token: ""
+
+llm:
+  custom_instructions: ""

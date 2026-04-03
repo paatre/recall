@@ -341,6 +341,8 @@ async def main() -> None:  # noqa: C901, PLR0912, PLR0915
     target_date_str = target_date.strftime("%Y-%m-%d")
     date_str = f"{day_abbr} {target_date_str}"
 
+    custom_instructions = config.get("llm", {}).get("custom_instructions", "")
+
     if not raw_output:
         if is_interactive():
             with yaspin(
@@ -350,7 +352,12 @@ async def main() -> None:  # noqa: C901, PLR0912, PLR0915
                 try:
                     from .llm import generate_timesheet  # noqa: PLC0415
 
-                    timesheet = generate_timesheet(summarized, target_date_str, model)
+                    timesheet = generate_timesheet(
+                        summarized,
+                        target_date_str,
+                        model,
+                        custom_instructions,
+                    )
                     spinner.ok("✅ ")
                 except Exception as e:  # noqa: BLE001
                     spinner.fail("❌ ")
