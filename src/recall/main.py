@@ -214,10 +214,23 @@ def is_interactive() -> bool:
     return sys.stdout.isatty()
 
 
+def _get_source_color(source: str) -> str:
+    """Return a distinct rich color for a given event source."""
+    color_map = {
+        "Slack": "#ECB22E",
+        "Firefox": "#FF6611",
+        "GitLab": "#FC6D2D",
+        "Shell": "#4eaa25",
+        "Calendar": "#4285F4",
+    }
+    return color_map.get(source, "white")
+
+
 def print_formatted_event(event: Event, date_str: str) -> None:
     """Print a formatted event, with special handling for Slack and GitLab."""
     local_timestamp = event.timestamp.astimezone()
-    source = f"[{event.source}]"
+    color = _get_source_color(event.source)
+    source = f"[[{color}]{event.source}[/]]"
     duration_str = (
         f"({event.duration_minutes} min)"
         if event.duration_minutes and event.duration_minutes > 1
@@ -406,7 +419,10 @@ def _generate_and_display_timesheet(
                 if not no_events:
                     for e in block.get("_events", []):
                         time_str = e.timestamp.astimezone().strftime("%H:%M:%S")
-                        tree.add(f"[{time_str}] [{e.source}] {e.description}")
+                        color = _get_source_color(e.source)
+                        tree.add(
+                            f"[{time_str}] [[{color}]{e.source}[/]] {e.description}",
+                        )
 
                 panel = Panel(
                     tree,

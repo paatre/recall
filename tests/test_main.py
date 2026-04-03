@@ -370,7 +370,7 @@ def test_print_formatted_event_simple(mock_console: MagicMock):
     event = Event(timestamp=make_dt(10), source="Test", description="Simple event")
     print_formatted_event(event, "test_date")
     mock_console.print.assert_any_call(
-        r"\[test_date 09:10:00] [Test] Simple event",
+        r"\[test_date 09:10:00] [[white]Test[/]] Simple event",
     )
 
 
@@ -389,7 +389,7 @@ def test_print_formatted_event_with_url_and_duration(
     )
     print_formatted_event(event, "test_date")
     mock_console.print.assert_any_call(
-        r"\[test_date 09:15:00] [Test] Event with URL (5 min)",
+        r"\[test_date 09:15:00] [[white]Test[/]] Event with URL (5 min)",
     )
     mock_console.print.assert_any_call("↳ http://example.com")
 
@@ -419,7 +419,7 @@ def test_print_formatted_event_no_tz_fixed(
     print_formatted_event(event, "test_date")
 
     mock_console.print.assert_any_call(
-        r"\[test_date 09:10:00] [Test] No TZ test",
+        r"\[test_date 09:10:00] [[white]Test[/]] No TZ test",
     )
 
 
@@ -437,7 +437,7 @@ def test_print_formatted_event_split_failure(mock_console: MagicMock):
     print_formatted_event(event, "test_date")
 
     mock_console.print.assert_any_call(
-        rf"\[test_date 09:25:00] [Slack] {description}",
+        rf"\[test_date 09:25:00] [[#ECB22E]Slack[/]] {description}",
     )
     mock_console.print.assert_called_with()
 
@@ -463,13 +463,13 @@ def test_print_formatted_event_dst(monkeypatch: pytest.MonkeyPatch):
     with patch("recall.main.console") as mock_console:
         print_formatted_event(event_winter, "test_date")
         mock_console.print.assert_any_call(
-            r"\[test_date 10:00:00] [Test] Winter event",
+            r"\[test_date 10:00:00] [[white]Test[/]] Winter event",
         )
 
     with patch("recall.main.console") as mock_console:
         print_formatted_event(event_summer, "test_date")
         mock_console.print.assert_any_call(
-            r"\[test_date 11:00:00] [Test] Summer event",
+            r"\[test_date 11:00:00] [[white]Test[/]] Summer event",
         )
 
     # Revert tzset for subsequent tests, since monkeypatch only
