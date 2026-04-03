@@ -8,6 +8,7 @@ from typing import Any
 
 from rich.console import Console
 from rich.panel import Panel
+from rich.prompt import Prompt
 from rich.text import Text
 from rich.tree import Tree
 from yaspin import yaspin
@@ -286,35 +287,15 @@ async def collect_events(
     return all_events
 
 
-async def main() -> None:  # noqa: C901, PLR0912, PLR0915
-    """Run all enabled collectors for a given date.
-
-    Prints a unified, chronologically sorted timeline of events.
-    """
-    try:
-        (
-            start_time,
-            end_time,
-            config_path,
-            raw_output,
-            model,
-            no_events,
-        ) = parse_arguments()
-    except ValueError as e:
-        console.print(f"❌ Error: {e}")
-        return
-
-    try:
-        config = load_config(config_path)
-    except (ConfigError, ConfigNotFoundError) as e:
-        console.print(f"❌ Error loading config: {e}")
-        return
-
-    collectors = init_collectors_from_config(config)
-    if len(collectors) == 0:
-        console.print("No collectors are enabled in the configuration.")
-        return
-
+async def process_and_display_date(
+    start_time: datetime,
+    end_time: datetime,
+    collectors: list[BaseCollector],
+    raw_output: bool,
+    model: str | None,
+    no_events: bool,
+    custom_instructions: str,
+) -> None:
     target_date = start_time
 
     if is_interactive():
@@ -340,8 +321,6 @@ async def main() -> None:  # noqa: C901, PLR0912, PLR0915
     day_abbr = day_map[target_date.weekday()]
     target_date_str = target_date.strftime("%Y-%m-%d")
     date_str = f"{day_abbr} {target_date_str}"
-
-    custom_instructions = config.get("llm", {}).get("custom_instructions", "")
 
     if not raw_output:
         if is_interactive():
@@ -410,6 +389,73 @@ async def main() -> None:  # noqa: C901, PLR0912, PLR0915
             )
             for event in summarized:
                 print_formatted_event(event, date_str)
+
+
+async def main() -> None:
+    """Run all enabled collectors for a given date.
+
+    Prints a unified, chronologically sorted timeline of events.
+    """
+    try:
+        (
+            start_time,
+            end_time,
+            config_path,
+            raw_output,
+            model,
+            no_events,
+        ) = parse_arguments()
+    except ValueError as e:
+        console.print(f"❌ Error: {e}")
+        return
+
+    try:
+        config = load_config(config_path)
+    except (ConfigError, ConfigNotFoundError) as e:
+        console.print(f"❌ Error loading config: {e}")
+        return
+
+    collectors = init_collectors_from_config(config)
+    if len(collectors) == 0:
+        console.print("No collectors are enabled in the configuration.")
+        return
+
+    custom_instructions = config.get("llm", {}).get("custom_instructions", "")
+
+    current_start_time = start_time
+    current_end_time = end_time
+
+    while True:
+        await process_and_display_date(
+            current_start_time,
+            current_end_time,
+            collectors,
+            raw_output,
+            model,
+            no_events,
+            custom_instructions,
+        )
+
+        if not is_interactive():
+            break
+
+        prev_date = (current_start_time - timedelta(days=1)).strftime("%Y-%m-%d")
+        next_date = (current_start_time + timedelta(days=1)).strftime("%Y-%m-%d")
+
+        answer = Prompt.ask(
+            f"\nView another day? \\[p]revious ({prev_date}) | \\[n]ext ({next_date}) | \\[q]uit",
+            choices=["p", "n", "q"],
+            default="q",
+        )
+
+        if answer == "q":
+            break
+        if answer == "p":
+            current_start_time -= timedelta(days=1)
+            current_end_time -= timedelta(days=1)
+        elif answer == "n":
+            current_start_time += timedelta(days=1)
+            current_end_time += timedelta(days=1)
 
 
 def _main() -> None:

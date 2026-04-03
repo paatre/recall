@@ -523,7 +523,9 @@ async def test_collect_events_with_error_and_spinner():
 
 @pytest.mark.asyncio
 @pytest.mark.usefixtures("interactive_true", "mock_valid_cli_args")
+@patch("recall.main.Prompt.ask", return_value="q")
 async def test_main_non_interactive_mode(
+    mock_prompt_ask: MagicMock,
     mock_load_config: MagicMock,
     mock_collect_events: MagicMock,
 ):
@@ -538,11 +540,37 @@ async def test_main_non_interactive_mode(
     mock_collect_events.assert_awaited_once()
 
 
+@patch("recall.main.Prompt.ask")
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("interactive_true", "mock_valid_cli_args")
+async def test_main_interactive_loop(
+    mock_prompt_ask: MagicMock,
+    mock_load_config: MagicMock,
+    mock_collect_events: MagicMock,
+):
+    """Test that main loop processes multiple days."""
+    mock_load_config.return_value = {
+        "sources": [{"type": "firefox", "enabled": True, "config": {}}],
+    }
+    mock_collect_events.return_value = [Event(make_dt(1), "Test", "Test Event")]
+
+    # Simulate user requesting previous day, then next day, then quitting
+    mock_prompt_ask.side_effect = ["p", "n", "q"]
+
+    await main()
+
+    # The loop should have run 3 times
+    assert mock_collect_events.await_count == 3
+    assert mock_prompt_ask.call_count == 3
+
+
+@patch("recall.main.Prompt.ask", return_value="q")
 @patch("recall.main.yaspin")
 @pytest.mark.asyncio
 @pytest.mark.usefixtures("interactive_true", "mock_valid_cli_args")
 async def test_main_interactive_mode(
     mock_yaspin: MagicMock,
+    mock_prompt_ask: MagicMock,
     mock_collect_events: MagicMock,
     mock_parse_arguments: MagicMock,
     mock_load_config: MagicMock,
