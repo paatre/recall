@@ -287,15 +287,17 @@ async def collect_events(
     return all_events
 
 
-async def process_and_display_date(
+async def process_and_display_date(  # noqa: PLR0913
     start_time: datetime,
     end_time: datetime,
     collectors: list[BaseCollector],
+    *,
     raw_output: bool,
     model: str | None,
     no_events: bool,
     custom_instructions: str,
 ) -> None:
+    """Process and display events for a given date."""
     target_date = start_time
 
     if is_interactive():
@@ -322,73 +324,98 @@ async def process_and_display_date(
     target_date_str = target_date.strftime("%Y-%m-%d")
     date_str = f"{day_abbr} {target_date_str}"
 
-    if not raw_output:
-        if is_interactive():
-            with yaspin(
-                text="🤖 Generating timesheet with GitHub Copilot...",
-                color="cyan",
-            ) as spinner:
-                try:
-                    from .llm import generate_timesheet  # noqa: PLC0415
+    if raw_output:
+        _display_raw_events(summarized, target_date_str, date_str)
+    else:
+        _generate_and_display_timesheet(
+            summarized,
+            target_date_str,
+            model,
+            custom_instructions,
+            no_events,
+        )
 
-                    timesheet = generate_timesheet(
-                        summarized,
-                        target_date_str,
-                        model,
-                        custom_instructions,
-                    )
-                    spinner.ok("✅ ")
-                except Exception as e:  # noqa: BLE001
-                    spinner.fail("❌ ")
-                    console.print(f"Error generating timesheet: {e}")
-                    return
-        else:
-            console.print("🤖 Generating timesheet with GitHub Copilot...")
+
+def _display_raw_events(
+    summarized: list[Event],
+    target_date_str: str,
+    date_str: str,
+) -> None:
+    with console.pager(styles=True):
+        console.print(
+            f"\n--- Summarized Activity Timeline for {target_date_str} ---\n",
+        )
+        for event in summarized:
+            print_formatted_event(event, date_str)
+
+
+def _generate_and_display_timesheet(
+    summarized: list[Event],
+    target_date_str: str,
+    model: str | None,
+    custom_instructions: str,
+    no_events: bool,  # noqa: FBT001
+) -> None:
+    timesheet = None
+    if is_interactive():
+        with yaspin(
+            text="🤖 Generating timesheet with GitHub Copilot...",
+            color="cyan",
+        ) as spinner:
             try:
                 from .llm import generate_timesheet  # noqa: PLC0415
 
-                timesheet = generate_timesheet(summarized, target_date_str, model)
+                timesheet = generate_timesheet(
+                    summarized,
+                    target_date_str,
+                    model,
+                    custom_instructions,
+                )
+                spinner.ok("✅ ")
             except Exception as e:  # noqa: BLE001
-                console.print(f"❌ Error generating timesheet: {e}")
+                spinner.fail("❌ ")
+                console.print(f"Error generating timesheet: {e}")
                 return
-
-        with console.pager(styles=True):
-            console.print(
-                f"\n--- Timesheet Draft for {target_date_str} ---\n",
-            )
-            if not timesheet:
-                console.print("No timesheet blocks were generated.")
-            else:
-                for block in timesheet:
-                    start = block.get("start_time", "??:??")
-                    end = block.get("end_time", "??:??")
-                    dur = block.get("duration_hours", 0)
-                    ctx = block.get("context", "Unknown")
-                    desc = block.get("description", "")
-
-                    header_text = f"[{start} - {end}] ({dur}h) | Context: {ctx}"
-
-                    tree = Tree(f'↳ "{desc}"')
-                    if not no_events:
-                        for e in block.get("_events", []):
-                            time_str = e.timestamp.astimezone().strftime("%H:%M:%S")
-                            tree.add(f"[{time_str}] [{e.source}] {e.description}")
-
-                    panel = Panel(
-                        tree,
-                        title=header_text,
-                        title_align="left",
-                        border_style="cyan",
-                    )
-                    console.print(panel)
-                    console.print()
     else:
-        with console.pager(styles=True):
-            console.print(
-                f"\n--- Summarized Activity Timeline for {target_date_str} ---\n",
-            )
-            for event in summarized:
-                print_formatted_event(event, date_str)
+        console.print("🤖 Generating timesheet with GitHub Copilot...")
+        try:
+            from .llm import generate_timesheet  # noqa: PLC0415
+
+            timesheet = generate_timesheet(summarized, target_date_str, model)
+        except Exception as e:  # noqa: BLE001
+            console.print(f"❌ Error generating timesheet: {e}")
+            return
+
+    with console.pager(styles=True):
+        console.print(
+            f"\n--- Timesheet Draft for {target_date_str} ---\n",
+        )
+        if not timesheet:
+            console.print("No timesheet blocks were generated.")
+        else:
+            for block in timesheet:
+                start = block.get("start_time", "??:??")
+                end = block.get("end_time", "??:??")
+                dur = block.get("duration_hours", 0)
+                ctx = block.get("context", "Unknown")
+                desc = block.get("description", "")
+
+                header_text = f"[{start} - {end}] ({dur}h) | Context: {ctx}"
+
+                tree = Tree(f'↳ "{desc}"')
+                if not no_events:
+                    for e in block.get("_events", []):
+                        time_str = e.timestamp.astimezone().strftime("%H:%M:%S")
+                        tree.add(f"[{time_str}] [{e.source}] {e.description}")
+
+                panel = Panel(
+                    tree,
+                    title=header_text,
+                    title_align="left",
+                    border_style="cyan",
+                )
+                console.print(panel)
+                console.print()
 
 
 async def main() -> None:
@@ -430,10 +457,10 @@ async def main() -> None:
             current_start_time,
             current_end_time,
             collectors,
-            raw_output,
-            model,
-            no_events,
-            custom_instructions,
+            raw_output=raw_output,
+            model=model,
+            no_events=no_events,
+            custom_instructions=custom_instructions,
         )
 
         if not is_interactive():
@@ -443,7 +470,8 @@ async def main() -> None:
         next_date = (current_start_time + timedelta(days=1)).strftime("%Y-%m-%d")
 
         answer = Prompt.ask(
-            f"\nView another day? \\[p]revious ({prev_date}) | \\[n]ext ({next_date}) | \\[q]uit",
+            f"\nView another day? \\[p]revious ({prev_date}) | "
+            f"\\[n]ext ({next_date}) | \\[q]uit",
             choices=["p", "n", "q"],
             default="q",
         )

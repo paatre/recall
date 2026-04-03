@@ -237,7 +237,7 @@ async def test_main_handles_parse_error(
 
 
 @pytest.mark.asyncio
-@pytest.mark.usefixtures("mock_valid_cli_args")
+@pytest.mark.usefixtures("interactive_false", "mock_valid_cli_args")
 async def test_main_succeeds_with_valid_config(
     mock_load_config: MagicMock,
     mock_collect_events: MagicMock,
@@ -525,7 +525,7 @@ async def test_collect_events_with_error_and_spinner():
 @pytest.mark.usefixtures("interactive_true", "mock_valid_cli_args")
 @patch("recall.main.Prompt.ask", return_value="q")
 async def test_main_non_interactive_mode(
-    mock_prompt_ask: MagicMock,
+    mock_prompt_ask: MagicMock,  # noqa: ARG001
     mock_load_config: MagicMock,
     mock_collect_events: MagicMock,
 ):
@@ -570,7 +570,7 @@ async def test_main_interactive_loop(
 @pytest.mark.usefixtures("interactive_true", "mock_valid_cli_args")
 async def test_main_interactive_mode(
     mock_yaspin: MagicMock,
-    mock_prompt_ask: MagicMock,
+    mock_prompt_ask: MagicMock,  # noqa: ARG001
     mock_collect_events: MagicMock,
     mock_parse_arguments: MagicMock,
     mock_load_config: MagicMock,
