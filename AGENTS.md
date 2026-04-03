@@ -9,7 +9,7 @@ This file contains instructions and rules for AI agents operating within this re
    - Always leave your modifications in the working directory (unstaged or staged) so the user can review them before committing.
 
 2. **Testing**
-   - The project uses `pytest`. Run tests using `uv run pytest`.
+   - The project uses `pytest`. Run tests using `uv run pytest`. Run `uv run nox` to run all tests across all Python versions.
    - Ensure all tests pass before presenting your solution.
    - If you add a feature or fix a bug, add or update relevant tests.
    - For tests involving time, ensure timezone independence by using `time_machine` or mocking the `TZ` environment variable (with `time.tzset()`).
