@@ -143,12 +143,31 @@ sources:
 
 llm:
   provider: "github" # "github", "openai", or "custom"
+  model: ""          # Optional. Model to use (e.g. gpt-4o, llama3).
   api_key: ""        # Optional. If empty, uses 'gh' CLI for github, or OPENAI_API_KEY
   base_url: ""       # Optional. Set to override default API endpoint
+  events_per_chunk: 150              # Number of events sent per API call
+  max_event_description_length: 200  # Truncates long event descriptions to save context
   custom_instructions: ""
 ```
 
 Read the following section for collector-specific setup instructions.
+
+### Local LLMs (Ollama, LM Studio)
+
+To prioritize data privacy, you can point Recall to any local OpenAI-compatible endpoint (such as Ollama or LM Studio) instead of sending your data to external APIs.
+
+Update the `llm` section in your `config.yaml`:
+
+```yaml
+llm:
+  provider: "custom"
+  model: "llama3"                    # Your local model's name
+  base_url: "http://localhost:11434/v1" # Local LLM endpoint
+  api_key: "not-needed"
+  events_per_chunk: 50               # Recommended for local LLMs with smaller context windows
+  max_event_description_length: 150  # Prevent overwhelming the context window
+```
 
 ### Collector-specific configurations
 

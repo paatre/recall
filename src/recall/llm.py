@@ -50,21 +50,22 @@ def generate_timesheet(  # noqa: C901
     provider = llm_config.get("provider", "github")
     api_key = llm_config.get("api_key", "")
     base_url = llm_config.get("base_url", "")
+    config_model = llm_config.get("model", "")
     custom_instructions = llm_config.get("custom_instructions", "")
 
     if provider == "github":
         if not api_key:
             api_key = get_gh_token()
         base_url = base_url or "https://models.inference.ai.azure.com"
-        model_name = model or "gpt-4o"
+        model_name = model or config_model or "gpt-4o"
     elif provider == "openai":
         base_url = base_url or "https://api.openai.com/v1"
-        model_name = model or "gpt-4o"
+        model_name = model or config_model or "gpt-4o"
     elif provider == "custom":
         if not base_url:
             msg = "A base_url is required when provider is 'custom'"
             raise RuntimeError(msg)
-        model_name = model or "gpt-4"
+        model_name = model or config_model or "gpt-4"
     else:
         msg = f"Unknown llm provider: {provider}"
         raise RuntimeError(msg)
@@ -79,13 +80,20 @@ def generate_timesheet(  # noqa: C901
     event_map = dict(enumerate(events))
     event_lines = []
 
+    chunk_size = llm_config.get("events_per_chunk", 150)
+    max_desc_len = llm_config.get("max_event_description_length", 200)
+
     for i, e in event_map.items():
         time_str = e.timestamp.astimezone().strftime("%H:%M:%S")
         duration = f"{e.duration_minutes}m" if e.duration_minutes else ""
-        line = f"[ID: {i}] [{time_str}] {e.source} - {e.description} {duration}"
+
+        desc = e.description
+        if max_desc_len > 0 and len(desc) > max_desc_len:
+            desc = desc[:max_desc_len] + "..."
+
+        line = f"[ID: {i}] [{time_str}] {e.source} - {desc} {duration}"
         event_lines.append(line)
 
-    chunk_size = 150
     chunks = [
         event_lines[i : i + chunk_size] for i in range(0, len(event_lines), chunk_size)
     ]
